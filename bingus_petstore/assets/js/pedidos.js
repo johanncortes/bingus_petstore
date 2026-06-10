@@ -1,0 +1,49 @@
+/**
+ * ============================================
+ * JS — Pedidos (Listado)
+ * ============================================
+ */
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const tbody = document.getElementById('pedidosBody');
+    
+    const res = await Api.get('/pedidos');
+    
+    if (!res.success) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:40px; color:#888;">Error: ${res.message}</td></tr>`;
+        return;
+    }
+
+    const pedidos = res.data;
+
+    if (pedidos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:#888;">No hay pedidos registrados.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = pedidos.map(p => {
+        // Badge estado
+        let badgeClass = 'badge-warning';
+        if (p.estado === 'PAGADO') badgeClass = 'badge-success';
+        else if (p.estado === 'CANCELADO') badgeClass = 'badge-danger';
+
+        // Productos resumen
+        const prods = (p.detalles || []).map(d => 
+            `${d.producto_nombre} (x${d.cantidad})`
+        ).join(', ');
+
+        return `
+        <tr>
+            <td><strong>#${p.id_pedido}</strong></td>
+            <td>${p.fecha}</td>
+            <td>${p.cliente_nombre || '-'}</td>
+            <td>${p.vendedor_nombre || '-'}</td>
+            <td><strong>$${Number(p.total).toLocaleString('es-CL')}</strong></td>
+            <td><span class="badge ${badgeClass}">${p.estado}</span></td>
+            <td style="font-size:12px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${prods || '-'}</td>
+            <td>
+                <a href="/bingus_petstore/views/admin/pedidos/editar.php?id=${p.id_pedido}" class="btn btn-info btn-sm">👁️ Ver</a>
+            </td>
+        </tr>`;
+    }).join('');
+});
