@@ -123,6 +123,17 @@ try {
             else Response::notFound('Ruta de clientes no encontrada.');
             break;
 
+        // ---- TIENDA PÚBLICA (sin autenticación) ----
+        case 'tienda':
+            require_once __DIR__ . '/controllers/TiendaController.php';
+            $controller = new TiendaController();
+
+            if ($method === 'GET' && $param1 === 'catalogo') $controller->catalogo();
+            elseif ($method === 'GET' && $param1 === 'categorias') $controller->categorias();
+            elseif ($method === 'POST' && $param1 === 'checkout') $controller->checkout();
+            else Response::notFound('Ruta de tienda no encontrada.');
+            break;
+
         // ---- DASHBOARD ----
         case 'dashboard':
             require_once __DIR__ . '/controllers/DashboardController.php';
@@ -143,7 +154,8 @@ try {
                     'vendedores' => '/api/vendedores',
                     'pedidos' => '/api/pedidos',
                     'clientes' => '/api/clientes',
-                    'dashboard' => '/api/dashboard/stats'
+                    'dashboard' => '/api/dashboard/stats',
+                    'tienda' => '/api/tienda/{catalogo|categorias|checkout}'
                 ]
             ], 'API Bingus Petstore funcionando.');
             break;
