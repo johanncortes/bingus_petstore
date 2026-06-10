@@ -31,13 +31,6 @@
             <span class="card-action">Ir a Vendedores →</span>
         </a>
 
-        <a href="/bingus_petstore/views/admin/compradores/listar.php" class="card card-dashboard">
-            <div class="card-icon">🧾</div>
-            <h3>Compradores</h3>
-            <p><span class="stat-number" id="statCompradores">-</span> clientes registrados.</p>
-            <span class="card-action">Ver Compradores →</span>
-        </a>
-
         <a href="/bingus_petstore/views/admin/pedidos/listar.php" class="card card-dashboard">
             <div class="card-icon">📋</div>
             <h3>Pedidos</h3>
@@ -67,9 +60,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('statProductos').textContent = stats.data.total_productos;
         document.getElementById('statVendedores').textContent = stats.data.total_vendedores;
         document.getElementById('statPedidos').textContent = stats.data.total_pedidos;
-        if (document.getElementById('statCompradores')) {
-            document.getElementById('statCompradores').textContent = stats.data.total_compradores;
-        }
     }
 });
 </script>

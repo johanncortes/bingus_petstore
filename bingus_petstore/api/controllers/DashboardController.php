@@ -25,14 +25,10 @@ class DashboardController {
             $stmt = $conn->prepare("CALL sp_dashboard_stats(?)");
             $stmt->execute([$usuario['admin_id']]);
             $stats = $stmt->fetch();
-            $stmt->closeCursor();
-
-            $total_compradores = $conn->query("SELECT COUNT(*) FROM clientes")->fetchColumn();
 
             if (!$stats) {
                 $stats = ['total_productos' => 0, 'total_vendedores' => 0, 'total_pedidos' => 0];
             }
-            $stats['total_compradores'] = ($total_compradores !== false) ? $total_compradores : 0;
 
             Response::success($stats, 'Estadísticas obtenidas.');
         } catch (Exception $e) {
