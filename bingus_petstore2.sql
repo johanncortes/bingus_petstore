@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 08-12-2025 a las 23:45:49
+-- Tiempo de generación: 11-06-2026 a las 20:53:45
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -166,7 +166,13 @@ INSERT INTO `auditoria_cambios` (`id_auditoria`, `tabla_afectada`, `tipo_operaci
 (61, 'productos', 'UPDATE', 10, 'Producto actualizado. Stock: 20 → 19. ', 'root@localhost', '2025-12-08 20:50:39'),
 (62, 'productos', 'UPDATE', 5, 'Producto actualizado. Stock: 80 → 75. ', 'root@localhost', '2025-12-08 20:50:39'),
 (63, 'productos', 'UPDATE', 6, 'Producto actualizado. Stock: 75 → 65. ', 'root@localhost', '2025-12-08 20:59:38'),
-(64, 'productos', 'UPDATE', 5, 'Producto actualizado. Stock: 75 → 65. ', 'root@localhost', '2025-12-08 20:59:38');
+(64, 'productos', 'UPDATE', 5, 'Producto actualizado. Stock: 75 → 65. ', 'root@localhost', '2025-12-08 20:59:38'),
+(65, 'productos', 'UPDATE', 7, 'Producto actualizado. Stock: 20 → 19. ', 'root@localhost', '2026-05-28 18:11:10'),
+(66, 'productos', 'UPDATE', 6, 'Producto actualizado. Stock: 65 → 62. ', 'root@localhost', '2026-05-28 19:59:23'),
+(67, 'productos', 'UPDATE', 3, 'Producto actualizado. Stock: 40 → 38. ', 'root@localhost', '2026-05-28 19:59:45'),
+(68, 'productos', 'UPDATE', 6, 'Producto actualizado. Stock: 62 → 57. ', 'root@localhost', '2026-05-28 19:59:45'),
+(69, 'clientes', 'UPDATE', 1, 'Cliente actualizado. ', 'root@localhost', '2026-06-11 18:42:10'),
+(70, 'clientes', 'UPDATE', 1, 'Cliente actualizado. ', 'root@localhost', '2026-06-11 18:46:18');
 
 -- --------------------------------------------------------
 
@@ -204,20 +210,22 @@ CREATE TABLE `clientes` (
   `rut` varchar(12) NOT NULL,
   `email` varchar(100) DEFAULT NULL,
   `telefono` varchar(20) DEFAULT NULL,
-  `direccion` varchar(200) DEFAULT NULL
+  `direccion` varchar(200) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `clientes`
 --
 
-INSERT INTO `clientes` (`id_cliente`, `nombre`, `rut`, `email`, `telefono`, `direccion`) VALUES
-(1, 'Juan Pérez', '11111111-1', 'juan.perez@example.com', '+56 9 7000 0001', 'Av. Los Perros 123, Coquimbo'),
-(2, 'María López', '22222222-2', 'maria.lopez@example.com', '+56 9 7000 0002', 'Calle Los Gatos 456, La Serena'),
-(3, 'Carlos Sánchez', '33333333-3', 'carlos.sanchez@example.com', '+56 9 7000 0003', 'Pasaje Mascotas 789, Coquimbo'),
-(4, 'Ana Torres', '44444444-4', 'ana.torres@example.com', '+56 9 7000 0004', 'Av. Central 100, La Serena'),
-(5, 'Pedro Ramírez', '55555555-5', 'pedro.ramirez@example.com', '+56 9 7000 0005', 'Ruta 5 Norte km 10, Coquimbo'),
-(7, 'Martina Cuello', '15374982-2', 'martina_cuello@hotmail.com', '+56 9 7234 8940', 'Las Cardas 2678');
+INSERT INTO `clientes` (`id_cliente`, `nombre`, `rut`, `email`, `telefono`, `direccion`, `password`) VALUES
+(1, 'Juan Pérez', '11111111-1', 'juan.perez@example.com', '+56 9 7000 0001', 'Av. Los Perros 123, Coquimbo', NULL),
+(2, 'María López', '22222222-2', 'maria.lopez@example.com', '+56 9 7000 0002', 'Calle Los Gatos 456, La Serena', NULL),
+(3, 'Carlos Sánchez', '33333333-3', 'carlos.sanchez@example.com', '+56 9 7000 0003', 'Pasaje Mascotas 789, Coquimbo', NULL),
+(4, 'Ana Torres', '44444444-4', 'ana.torres@example.com', '+56 9 7000 0004', 'Av. Central 100, La Serena', NULL),
+(5, 'Pedro Ramírez', '55555555-5', 'pedro.ramirez@example.com', '+56 9 7000 0005', 'Ruta 5 Norte km 10, Coquimbo', NULL),
+(7, 'Martina Cuello', '15374982-2', 'martina_cuello@hotmail.com', '+56 9 7234 8940', 'Las Cardas 2678', NULL),
+(8, 'Maurice Tania', '6767676-9', 'maurice@gmail.com', '+56 9 2342 8293', 'Regimiento arica 67', NULL);
 
 --
 -- Disparadores `clientes`
@@ -301,7 +309,12 @@ INSERT INTO `detalle_pedido` (`id_detalle`, `id_pedido`, `id_producto`, `cantida
 (5, 4, 5, 5, 5500.00, 27500.00),
 (6, 5, 6, 10, 3500.00, 35000.00),
 (7, 5, 5, 10, 5500.00, 55000.00),
-(8, 6, 10, 19, 26000.00, 494000.00);
+(8, 6, 10, 19, 26000.00, 494000.00),
+(9, 7, 7, 1, 8000.00, 8000.00),
+(10, 8, 6, 3, 3500.00, 10500.00),
+(11, 9, 3, 2, 15000.00, 30000.00),
+(12, 9, 6, 5, 3500.00, 17500.00),
+(13, 10, 10, 2, 26000.00, 52000.00);
 
 -- --------------------------------------------------------
 
@@ -328,7 +341,11 @@ INSERT INTO `pedidos` (`id_pedido`, `id_cliente`, `id_vendedor`, `fecha`, `estad
 (3, 5, 1, '2025-12-08 17:49:08', 'CANCELADO', 210000.00),
 (4, 7, 3, '2025-12-08 17:50:39', 'PAGADO', 53500.00),
 (5, 2, 3, '2025-12-08 17:59:38', 'PENDIENTE', 90000.00),
-(6, 1, 3, '2025-12-08 19:17:04', 'CANCELADO', 494000.00);
+(6, 1, 3, '2025-12-08 19:17:04', 'CANCELADO', 494000.00),
+(7, 4, 1, '2026-05-28 14:11:10', 'PAGADO', 8000.00),
+(8, 3, 1, '2026-05-28 15:59:23', 'PAGADO', 10500.00),
+(9, 1, 1, '2026-05-28 15:59:45', 'PAGADO', 47500.00),
+(10, 8, 1, '2026-06-10 14:19:22', 'PENDIENTE', 52000.00);
 
 -- --------------------------------------------------------
 
@@ -355,11 +372,11 @@ CREATE TABLE `productos` (
 INSERT INTO `productos` (`id_producto`, `nombre`, `descripcion`, `imagen`, `id_categoria`, `id_proveedor`, `precio`, `stock`, `activo`) VALUES
 (1, 'Croquetas Perro Cachorro 2kg', 'Alimento seco para perro cachorro', NULL, 1, 1, 12000.00, 49, 0),
 (2, 'Croquetas Perro Adulto 10kg', 'Alimento seco perro adulto', '89d8057a3c5b883f121f82085b1914ed.jpg', 1, 2, 28000.00, 30, 1),
-(3, 'Alimento Gato Indoor 3kg', 'Control bolas de pelo', 'e4cbe022ac7b3ea223b3e214a4de5353.webp', 2, 3, 15000.00, 40, 1),
+(3, 'Alimento Gato Indoor 3kg', 'Control bolas de pelo', 'e4cbe022ac7b3ea223b3e214a4de5353.webp', 2, 3, 15000.00, 38, 1),
 (4, 'Arena Sanitaria Aglomerante 10kg', 'Arena para gatos', '03375b2da9edad3805651aba80f671d3.webp', 4, 4, 9000.00, 59, 1),
 (5, 'Snack Perro Huesitos 500g', 'Snacks sabor pollo', '5a261db32755c5484023dc4d88f3396f.webp', 3, 2, 5500.00, 65, 1),
-(6, 'Snack Gato Pescado 100g', 'Snacks sabor pescado', 'f7fb09890baeb7f15a32a5dead06e616.webp', 3, 3, 3500.00, 65, 1),
-(7, 'Correa Nylon Perro Mediano', 'Correa 1.5m', '21a5acc057b3955743760e85b3161133.webp', 5, 5, 8000.00, 20, 1),
+(6, 'Snack Gato Pescado 100g', 'Snacks sabor pescado', 'f7fb09890baeb7f15a32a5dead06e616.webp', 3, 3, 3500.00, 57, 1),
+(7, 'Correa Nylon Perro Mediano', 'Correa 1.5m', '21a5acc057b3955743760e85b3161133.webp', 5, 5, 8000.00, 19, 1),
 (8, 'Juguete Pelota con Sonido', 'Pelota con sonido', NULL, 5, 1, 4500.00, 99, 0),
 (9, 'Heno Premium Roedores 1kg', 'Heno natural', '1e0bc1df7a19e675b52f7e40f4f9b4f3.png', 6, 4, 7000.00, 20, 1),
 (10, 'Jaula Roedor Mediana', 'Jaula metálica', '7b36d2038dd0d8dec16e0e6b0c01e5c3.jpg', 6, 5, 26000.00, 19, 1);
@@ -480,9 +497,9 @@ CREATE TABLE `vendedores` (
 --
 
 INSERT INTO `vendedores` (`id_vendedor`, `nombre`, `rut`, `email`, `telefono`, `fecha_contratacion`, `id_administrador`, `activo`, `contrasena`, `usuario`) VALUES
-(1, 'Sandra Quiroga', '20780562-2', 'sandra.q@bingus.cl', '+56 9 7890 2374', '2025-12-08', 1, 1, '$2y$10$sRWi9wsZsVlo0EAAzPmiP.L8cBcEZnlwCGQcI.OzQvOrZOR2tMEEG', NULL),
-(2, 'Laura Goméz', '17354823-K', 'laura.g@bingus.cl', '+56 9 7023 7723', '2025-12-08', 1, 1, '$2y$10$MVlWW0nNFTSK8DyDuLlaF.VlJGNV5aaWPmyZp0RAkfUOv.ihGLvty', NULL),
-(3, 'Nicolás Guerrero', '20890111-9', 'nicolas.g@bingus.cl', '+56 9 1789 3738', '2025-12-08', 2, 1, '$2y$10$7vNs0873YBGPBYAGLuZEB.p3GYmLIyZxqzHKl35M/kgDFpQVuikZO', NULL);
+(1, 'Sandra Quiroga', '20780562-2', 'sandra.q@bingus.cl', '+56 9 7890 2374', '2025-12-08', 1, 1, '123456', NULL),
+(2, 'Laura Goméz', '17354823-K', 'laura.g@bingus.cl', '+56 9 7023 7723', '2025-12-08', 1, 1, '123456', NULL),
+(3, 'Nicolás Guerrero', '20890111-9', 'nicolas.g@bingus.cl', '+56 9 1789 3738', '2025-12-08', 2, 1, '123456', NULL);
 
 -- --------------------------------------------------------
 
@@ -620,7 +637,7 @@ ALTER TABLE `administradores`
 -- AUTO_INCREMENT de la tabla `auditoria_cambios`
 --
 ALTER TABLE `auditoria_cambios`
-  MODIFY `id_auditoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
+  MODIFY `id_auditoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
 
 --
 -- AUTO_INCREMENT de la tabla `categorias_productos`
@@ -632,19 +649,19 @@ ALTER TABLE `categorias_productos`
 -- AUTO_INCREMENT de la tabla `clientes`
 --
 ALTER TABLE `clientes`
-  MODIFY `id_cliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_cliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_pedido`
 --
 ALTER TABLE `detalle_pedido`
-  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos`
 --
 ALTER TABLE `pedidos`
-  MODIFY `id_pedido` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id_pedido` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `productos`

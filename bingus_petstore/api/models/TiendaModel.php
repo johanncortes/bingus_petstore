@@ -77,11 +77,10 @@ class TiendaModel {
      * @return int ID del cliente creado
      */
     public function registrarCliente($nombre, $rut, $email, $password, $telefono, $direccion) {
-        $hash = password_hash($password, PASSWORD_BCRYPT);
         $stmt = $this->conn->prepare(
             "INSERT INTO clientes (nombre, rut, email, telefono, direccion, password) VALUES (?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$nombre, $rut, $email, $telefono, $direccion, $hash]);
+        $stmt->execute([$nombre, $rut, $email, $telefono, $direccion, $password]);
         return $this->conn->lastInsertId();
     }
 
@@ -94,7 +93,8 @@ class TiendaModel {
         $stmt->execute([$email]);
         $cliente = $stmt->fetch();
 
-        if ($cliente && $cliente['password'] && password_verify($password, $cliente['password'])) {
+        // Comparación en texto plano (sin hash)
+        if ($cliente && $cliente['password'] && $password === $cliente['password']) {
             return $cliente;
         }
         return false;
