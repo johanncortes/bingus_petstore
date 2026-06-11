@@ -5,11 +5,7 @@
     <div style="text-align:center; margin-bottom:20px;">
         <span style="font-size:50px;">🐾</span>
         <h2>Bingus Petstore</h2>
-        <p style="color:#888; font-size:14px;">Inicia sesión para continuar</p>
-        <a href="/bingus_petstore/views/tienda/tienda.php" 
-           style="display:inline-block; margin-top:12px; color:#667eea; font-weight:600; font-size:14px; padding:8px 20px; border:2px solid #667eea; border-radius:50px; transition:all 0.3s;">
-            🛒 Ir a la Tienda Virtual
-        </a>
+        <p style="color:#888; font-size:14px;">Panel de Gestión — Inicia sesión para continuar</p>
     </div>
 
     <!-- Selector de Rol -->

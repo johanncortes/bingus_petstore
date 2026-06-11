@@ -1,7 +1,10 @@
 <?php 
+session_start();
 $page_title = 'Tienda - Bingus Petstore'; 
 $page_description = 'Tienda virtual de productos para mascotas. Encuentra todo lo que tu mascota necesita.';
 $body_class = 'tienda-body';
+$cliente_logueado = isset($_SESSION['cliente_id']);
+$cliente_nombre = $_SESSION['cliente_nombre'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -29,7 +32,12 @@ $body_class = 'tienda-body';
             </div>
 
             <div class="tienda-nav-actions">
-                <a href="/bingus_petstore/views/auth/login.php" class="btn-login-link">🔑 Iniciar Sesión</a>
+                <?php if ($cliente_logueado): ?>
+                    <span class="tienda-user-name" id="navClienteNombre">👤 <?php echo htmlspecialchars($cliente_nombre); ?></span>
+                    <button class="btn-login-link btn-logout-link" onclick="logoutCliente()">Cerrar Sesión</button>
+                <?php else: ?>
+                    <a href="/bingus_petstore/views/tienda/login.php" class="btn-login-link" id="navLoginLink">👤 Mi Cuenta</a>
+                <?php endif; ?>
                 <button class="btn-carrito" onclick="abrirCarrito()" id="btnCarritoNav">
                     🛒 Carrito
                     <span class="carrito-badge" id="carritoBadge" style="display:none;">0</span>

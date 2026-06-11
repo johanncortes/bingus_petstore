@@ -3,6 +3,8 @@
  * JS — Tienda Virtual Bingus Petstore
  * ============================================
  * Catálogo, carrito (localStorage) y checkout.
+ * Incluye controles de cantidad en tarjetas y
+ * soporte para sesión de cliente.
  */
 
 // ========== ESTADO ==========
@@ -10,6 +12,7 @@ let catalogoDB = [];
 let categoriasDB = [];
 let filtroCategoria = null;
 let filtroBusqueda = '';
+let clienteSesion = null; // datos del cliente si hay sesión
 
 // ========== CARRITO EN LOCALSTORAGE ==========
 function getCarrito() {
@@ -26,6 +29,7 @@ function setCarrito(carrito) {
 
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', async () => {
+    await verificarSesionCliente();
     await cargarCategorias();
     await cargarCatalogo();
     renderBadgeCarrito();
@@ -39,6 +43,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+
+// ========== SESIÓN DE CLIENTE ==========
+async function verificarSesionCliente() {
+    try {
+        const res = await Api.get('/tienda/session');
+        if (res.success) {
+            clienteSesion = res.data;
+        }
+    } catch {
+        clienteSesion = null;
+    }
+}
+
+async function logoutCliente() {
+    await Api.post('/tienda/logout', {});
+    clienteSesion = null;
+    window.location.reload();
+}
 
 // ========== CARGAR DATOS ==========
 async function cargarCatalogo() {
@@ -68,6 +90,7 @@ async function cargarCategorias() {
 // ========== RENDER CATÁLOGO ==========
 function renderCatalogo() {
     const grid = document.getElementById('tiendaGrid');
+    const carrito = getCarrito();
     
     // Filtrar productos
     let productos = catalogoDB.filter(p => {
@@ -98,8 +121,28 @@ function renderCatalogo() {
             ? `<img src="/bingus_petstore/uploads/productos/${p.imagen}" alt="${p.nombre}" loading="lazy">`
             : `<span class="no-img">🐾</span>`;
 
+        // Check if product is in cart
+        const enCarrito = carrito.find(i => i.id_producto == p.id_producto);
+        const cantidadEnCarrito = enCarrito ? enCarrito.cantidad : 0;
+
+        // Build action button/control
+        let accionHtml;
+        if (cantidadEnCarrito > 0) {
+            accionHtml = `
+                <div class="qty-control" id="qty-${p.id_producto}">
+                    <button class="qty-btn qty-minus" onclick="cambiarCantidadTarjeta(${p.id_producto}, -1)" title="Quitar uno">−</button>
+                    <span class="qty-value">${cantidadEnCarrito}</span>
+                    <button class="qty-btn qty-plus" onclick="cambiarCantidadTarjeta(${p.id_producto}, 1)" title="Agregar uno" ${cantidadEnCarrito >= p.stock ? 'disabled' : ''}>+</button>
+                </div>`;
+        } else {
+            accionHtml = `
+                <button class="btn-agregar" onclick="agregarAlCarrito(${p.id_producto})" title="Agregar al carrito">
+                    <span class="btn-agregar-icon">🛒</span> Agregar
+                </button>`;
+        }
+
         return `
-        <div class="tienda-card" id="card-${p.id_producto}">
+        <div class="tienda-card ${cantidadEnCarrito > 0 ? 'in-cart' : ''}" id="card-${p.id_producto}">
             <div class="tienda-card-img">
                 ${imgHtml}
                 <span class="tienda-card-cat">${p.categoria_nombre}</span>
@@ -110,7 +153,7 @@ function renderCatalogo() {
                 <div class="tienda-card-desc">${p.descripcion || 'Producto para tu mascota.'}</div>
                 <div class="tienda-card-footer">
                     <div class="tienda-card-price">$${precioFmt} <small>CLP</small></div>
-                    <button class="btn-agregar" onclick="agregarAlCarrito(${p.id_producto})" title="Agregar al carrito">+</button>
+                    ${accionHtml}
                 </div>
             </div>
         </div>`;
@@ -181,19 +224,35 @@ function agregarAlCarrito(id_producto) {
 
     setCarrito(carrito);
     renderBadgeCarrito();
-
-    // Feedback visual en el botón
-    const btn = document.querySelector(`#card-${id_producto} .btn-agregar`);
-    if (btn) {
-        btn.classList.add('added');
-        btn.innerHTML = '✓';
-        setTimeout(() => {
-            btn.classList.remove('added');
-            btn.innerHTML = '+';
-        }, 800);
-    }
+    renderCatalogo(); // Re-render to show qty controls
 
     mostrarToast(`${producto.nombre} agregado al carrito`, 'success');
+}
+
+// ========== CARRITO: CAMBIAR CANTIDAD DESDE TARJETA ==========
+function cambiarCantidadTarjeta(id_producto, delta) {
+    let carrito = getCarrito();
+    const index = carrito.findIndex(i => i.id_producto == id_producto);
+    if (index === -1) return;
+
+    const item = carrito[index];
+    const producto = catalogoDB.find(p => p.id_producto == id_producto);
+    const nuevaCant = item.cantidad + delta;
+
+    if (nuevaCant <= 0) {
+        carrito.splice(index, 1);
+        mostrarToast(`${item.nombre} eliminado del carrito`, 'success');
+    } else if (producto && nuevaCant > producto.stock) {
+        mostrarToast(`Stock máximo: ${producto.stock}`, 'error');
+        return;
+    } else {
+        item.cantidad = nuevaCant;
+        item.subtotal = item.cantidad * item.precio;
+    }
+
+    setCarrito(carrito);
+    renderBadgeCarrito();
+    renderCatalogo(); // Re-render to update qty display
 }
 
 // ========== CARRITO: RENDER BADGE ==========
@@ -288,6 +347,7 @@ function cambiarCantidad(index, delta) {
     setCarrito(carrito);
     renderCarritoSidebar();
     renderBadgeCarrito();
+    renderCatalogo(); // Sync card qty controls
 }
 
 function eliminarDelCarrito(index) {
@@ -296,6 +356,7 @@ function eliminarDelCarrito(index) {
     setCarrito(carrito);
     renderCarritoSidebar();
     renderBadgeCarrito();
+    renderCatalogo(); // Sync card qty controls
 }
 
 function vaciarCarrito() {
@@ -303,6 +364,7 @@ function vaciarCarrito() {
     setCarrito([]);
     renderCarritoSidebar();
     renderBadgeCarrito();
+    renderCatalogo(); // Sync card qty controls
 }
 
 // ========== CHECKOUT ==========
@@ -311,6 +373,15 @@ function abrirCheckout() {
     if (carrito.length === 0) return;
 
     cerrarCarrito();
+
+    // Pre-fill form if client is logged in
+    if (clienteSesion) {
+        document.getElementById('chkNombre').value = clienteSesion.nombre || '';
+        document.getElementById('chkRut').value = clienteSesion.rut || '';
+        document.getElementById('chkEmail').value = clienteSesion.email || '';
+        document.getElementById('chkTelefono').value = clienteSesion.telefono || '';
+        document.getElementById('chkDireccion').value = clienteSesion.direccion || '';
+    }
 
     // Render resumen
     const resumenHtml = carrito.map(item => `
@@ -341,31 +412,39 @@ async function confirmarPedido() {
     const carrito = getCarrito();
     if (carrito.length === 0) return;
 
-    // Validar campos
-    const nombre = document.getElementById('chkNombre').value.trim();
-    const rut = document.getElementById('chkRut').value.trim();
-    const email = document.getElementById('chkEmail').value.trim();
-    const telefono = document.getElementById('chkTelefono').value.trim();
-    const direccion = document.getElementById('chkDireccion').value.trim();
-
-    if (!nombre || !rut) {
-        mostrarToast('Nombre y RUT son obligatorios', 'error');
-        return;
-    }
-
     const btnConfirmar = document.getElementById('btnConfirmarPedido');
     btnConfirmar.disabled = true;
     btnConfirmar.textContent = 'Procesando...';
 
-    const res = await Api.post('/tienda/checkout', {
-        cliente: { nombre, rut, email, telefono, direccion },
+    // Build request body
+    const body = {
         items: carrito.map(i => ({
             id_producto: i.id_producto,
             cantidad: i.cantidad,
             precio: i.precio,
             subtotal: i.subtotal
         }))
-    });
+    };
+
+    // If not logged in, include client data from form
+    if (!clienteSesion) {
+        const nombre = document.getElementById('chkNombre').value.trim();
+        const rut = document.getElementById('chkRut').value.trim();
+        const email = document.getElementById('chkEmail').value.trim();
+        const telefono = document.getElementById('chkTelefono').value.trim();
+        const direccion = document.getElementById('chkDireccion').value.trim();
+
+        if (!nombre || !rut) {
+            mostrarToast('Nombre y RUT son obligatorios', 'error');
+            btnConfirmar.disabled = false;
+            btnConfirmar.textContent = '✅ Confirmar Pedido';
+            return;
+        }
+
+        body.cliente = { nombre, rut, email, telefono, direccion };
+    }
+
+    const res = await Api.post('/tienda/checkout', body);
 
     if (res.success) {
         // Limpiar carrito
@@ -399,7 +478,7 @@ async function confirmarPedido() {
     }
 
     btnConfirmar.disabled = false;
-    btnConfirmar.textContent = 'Confirmar Pedido';
+    btnConfirmar.textContent = '✅ Confirmar Pedido';
 }
 
 // ========== TOASTS ==========

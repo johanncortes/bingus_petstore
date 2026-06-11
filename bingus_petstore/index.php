@@ -15,6 +15,8 @@ if (isset($_SESSION['usuario_rol'])) {
         header("Location: views/admin/dashboard.php");
     } elseif ($_SESSION['usuario_rol'] === 'VENDEDOR') {
         header("Location: views/vendedor/pos.php");
+    } elseif ($_SESSION['usuario_rol'] === 'CLIENTE') {
+        header("Location: views/tienda/tienda.php");
     }
     exit();
 }

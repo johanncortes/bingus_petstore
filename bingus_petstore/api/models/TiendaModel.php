@@ -70,6 +70,54 @@ class TiendaModel {
         return $this->conn->lastInsertId();
     }
 
+    // ========== AUTH DE CLIENTES ==========
+
+    /**
+     * Registrar un nuevo cliente con contraseña
+     * @return int ID del cliente creado
+     */
+    public function registrarCliente($nombre, $rut, $email, $password, $telefono, $direccion) {
+        $hash = password_hash($password, PASSWORD_BCRYPT);
+        $stmt = $this->conn->prepare(
+            "INSERT INTO clientes (nombre, rut, email, telefono, direccion, password) VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([$nombre, $rut, $email, $telefono, $direccion, $hash]);
+        return $this->conn->lastInsertId();
+    }
+
+    /**
+     * Login de cliente por email + password
+     * @return array|false Datos del cliente o false
+     */
+    public function loginCliente($email, $password) {
+        $stmt = $this->conn->prepare("SELECT * FROM clientes WHERE email = ? LIMIT 1");
+        $stmt->execute([$email]);
+        $cliente = $stmt->fetch();
+
+        if ($cliente && $cliente['password'] && password_verify($password, $cliente['password'])) {
+            return $cliente;
+        }
+        return false;
+    }
+
+    /**
+     * Obtener cliente por ID
+     */
+    public function getClienteById($id) {
+        $stmt = $this->conn->prepare("SELECT id_cliente, nombre, rut, email, telefono, direccion FROM clientes WHERE id_cliente = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+
+    /**
+     * Verificar si un email ya está registrado
+     */
+    public function existeEmail($email) {
+        $stmt = $this->conn->prepare("SELECT COUNT(*) FROM clientes WHERE email = ?");
+        $stmt->execute([$email]);
+        return $stmt->fetchColumn() > 0;
+    }
+
     /**
      * Crear pedido completo desde la tienda virtual
      * - Estado por defecto: PENDIENTE (no descuenta stock hasta que admin apruebe)
