@@ -3,7 +3,7 @@
 
 <div class="container">
     <div class="page-header">
-        <h1>📋 Historial de Pedidos</h1>
+        <h1>📋 Gestión de Pedidos</h1>
         <a href="/bingus_petstore/views/admin/dashboard.php" class="btn btn-secondary">🏠 Volver</a>
     </div>
 
@@ -14,8 +14,8 @@
                     <th>#</th>
                     <th>Fecha</th>
                     <th>Cliente</th>
-                    <th>Vendedor</th>
-                    <th>Total</th>
+                    <th>Repartidor</th>
+                    <th>Total (c/IVA)</th>
                     <th>Estado</th>
                     <th>Productos</th>
                     <th>Acciones</th>

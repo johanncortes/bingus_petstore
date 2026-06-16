@@ -364,6 +364,27 @@
     color: #999;
 }
 
+/* IVA tag on product cards */
+.tienda-card-price {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.precio-total {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.precio-iva-tag {
+    font-size: 10px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .btn-agregar {
     background: var(--gradient);
     color: #fff;
@@ -1137,6 +1158,53 @@
 @keyframes shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
+}
+
+/* ========== CARRITO: DESGLOSE IVA ========== */
+.carrito-desglose {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.carrito-desglose-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #888;
+    font-weight: 500;
+}
+
+.carrito-desglose-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--gray-dark);
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top: 2px solid #e8ecf1;
+}
+
+/* ========== CHECKOUT: DESGLOSE IVA ========== */
+.checkout-resumen-desglose {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #ddd;
+}
+
+.checkout-resumen-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 13px;
+    color: #888;
+    font-weight: 500;
+}
+
+.checkout-resumen-desglose .checkout-resumen-total {
+    margin-top: 8px;
 }
 
 /* ========== RESPONSIVE ========== */

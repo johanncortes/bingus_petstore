@@ -4,7 +4,7 @@
  * CAPA 2 — Controlador: Tienda Pública
  * ============================================
  * Endpoints públicos para la tienda virtual (e-commerce).
- * Incluye autenticación de clientes (registro/login).
+ * Incluye autenticación de clientes y checkout con IVA.
  */
 
 require_once __DIR__ . '/../models/TiendaModel.php';
@@ -19,7 +19,7 @@ class TiendaController {
 
     /**
      * GET /api/tienda/catalogo
-     * Obtener todos los productos disponibles para la venta
+     * Obtener todos los productos disponibles con IVA desglosado
      */
     public function catalogo() {
         $productos = $this->model->getCatalogo();
@@ -33,6 +33,21 @@ class TiendaController {
     public function categorias() {
         $categorias = $this->model->getCategorias();
         Response::success($categorias, 'Categorías obtenidas.');
+    }
+
+    /**
+     * GET /api/tienda/config
+     * Obtener configuración pública (tasa IVA, etc.)
+     */
+    public function config() {
+        $tasa_iva = $this->model->getTasaIVA();
+        Response::success([
+            'iva' => [
+                'nombre' => 'IVA',
+                'porcentaje' => $tasa_iva,
+                'descripcion' => "Impuesto al Valor Agregado ($tasa_iva%)"
+            ]
+        ], 'Configuración obtenida.');
     }
 
     // ========== AUTH DE CLIENTES ==========
@@ -167,15 +182,15 @@ class TiendaController {
 
     /**
      * POST /api/tienda/checkout
-     * Procesar compra desde la tienda virtual
+     * Procesar compra desde la tienda virtual con IVA
      * 
      * Body: {
-     *   "cliente": { "nombre": "...", "rut": "...", "email": "...", "telefono": "...", "direccion": "..." },
-     *   "items": [{ "id_producto": 1, "cantidad": 2, "precio": 12000, "subtotal": 24000 }, ...]
+     *   "cliente": { "nombre", "rut", "email", "telefono", "direccion" },
+     *   "items": [{ "id_producto": 1, "cantidad": 2, "precio": 14280, "subtotal": 28560 }, ...],
+     *   "direccion_entrega": "Calle 123..."
      * }
      * 
-     * Si hay sesión de cliente activa, se usa el id_cliente de la sesión
-     * y los datos del formulario son opcionales.
+     * Nota: 'precio' y 'subtotal' en items incluyen IVA (precio_total)
      */
     public function checkout() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -185,6 +200,7 @@ class TiendaController {
         $data = json_decode(file_get_contents('php://input'), true);
 
         $items = $data['items'] ?? [];
+        $direccion_entrega = $data['direccion_entrega'] ?? null;
 
         if (empty($items)) {
             Response::error('El carrito está vacío.');
@@ -197,6 +213,12 @@ class TiendaController {
             if (isset($_SESSION['cliente_id'])) {
                 // Cliente autenticado — usar su ID directamente
                 $id_cliente = $_SESSION['cliente_id'];
+                
+                // Si no viene dirección de entrega, usar la del perfil
+                if (empty($direccion_entrega)) {
+                    $clienteData = $this->model->getClienteById($id_cliente);
+                    $direccion_entrega = $clienteData['direccion'] ?? null;
+                }
             } else {
                 // Cliente anónimo — necesita datos del formulario
                 $cliente = $data['cliente'] ?? null;
@@ -223,10 +245,15 @@ class TiendaController {
                         $cliente['direccion'] ?? null
                     );
                 }
+
+                // Usar la dirección del formulario si no viene dirección de entrega
+                if (empty($direccion_entrega)) {
+                    $direccion_entrega = $cliente['direccion'] ?? null;
+                }
             }
 
-            // Crear el pedido
-            $id_pedido = $this->model->crearPedidoTienda($id_cliente, $items);
+            // Crear el pedido con IVA
+            $id_pedido = $this->model->crearPedidoTienda($id_cliente, $items, $direccion_entrega);
 
             Response::success(
                 [
@@ -243,4 +270,3 @@ class TiendaController {
     }
 }
 ?>
-

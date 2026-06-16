@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================
- * ROUTER CENTRAL — API REST Bingus Petstore
+ * ROUTER CENTRAL — API REST Bingus Petstore v3.0
  * ============================================
  * Punto de entrada único para todas las peticiones API.
  * Parsea la URL y despacha al controlador correcto.
@@ -14,8 +14,8 @@
  *   POST /api/productos          → ProductoController::crear()
  *   POST /api/productos/5        → ProductoController::actualizar(5)
  *   DELETE /api/productos/5      → ProductoController::eliminar(5)
- *   GET  /api/productos/categorias  → ProductoController::categorias()
  *   PUT  /api/pedidos/3/estado   → PedidoController::cambiarEstado(3)
+ *   PUT  /api/pedidos/3/repartidor → PedidoController::asignarRepartidor(3)
  */
 
 // Headers CORS y JSON
@@ -59,7 +59,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     switch ($recurso) {
 
-        // ---- AUTH ----
+        // ---- AUTH (Solo Admins) ----
         case 'auth':
             require_once __DIR__ . '/controllers/AuthController.php';
             $controller = new AuthController();
@@ -87,17 +87,21 @@ try {
             else Response::notFound('Ruta de productos no encontrada.');
             break;
 
-        // ---- VENDEDORES ----
-        case 'vendedores':
-            require_once __DIR__ . '/controllers/VendedorController.php';
-            $controller = new VendedorController();
+        // ---- REPARTIDORES ----
+        case 'repartidores':
+            require_once __DIR__ . '/controllers/RepartidorController.php';
+            $controller = new RepartidorController();
+
+            // Rutas especiales
+            if ($param1 === 'disponibles') { $controller->disponibles(); break; }
 
             if ($method === 'GET' && $param1 === null) $controller->listar();
             elseif ($method === 'GET' && is_numeric($param1)) $controller->obtener($param1);
             elseif ($method === 'POST' && $param1 === null) $controller->crear();
+            elseif ($method === 'PUT' && is_numeric($param1) && $param2 === 'disponibilidad') $controller->cambiarDisponibilidad($param1);
             elseif ($method === 'PUT' && is_numeric($param1)) $controller->actualizar($param1);
             elseif ($method === 'DELETE' && is_numeric($param1)) $controller->eliminar($param1);
-            else Response::notFound('Ruta de vendedores no encontrada.');
+            else Response::notFound('Ruta de repartidores no encontrada.');
             break;
 
         // ---- PEDIDOS ----
@@ -107,8 +111,8 @@ try {
 
             if ($method === 'GET' && $param1 === null) $controller->listar();
             elseif ($method === 'GET' && is_numeric($param1)) $controller->obtener($param1);
-            elseif ($method === 'POST' && $param1 === null) $controller->crear();
             elseif ($method === 'PUT' && is_numeric($param1) && $param2 === 'estado') $controller->cambiarEstado($param1);
+            elseif ($method === 'PUT' && is_numeric($param1) && $param2 === 'repartidor') $controller->asignarRepartidor($param1);
             else Response::notFound('Ruta de pedidos no encontrada.');
             break;
 
@@ -130,6 +134,7 @@ try {
 
             if ($method === 'GET' && $param1 === 'catalogo') $controller->catalogo();
             elseif ($method === 'GET' && $param1 === 'categorias') $controller->categorias();
+            elseif ($method === 'GET' && $param1 === 'config') $controller->config();
             elseif ($method === 'POST' && $param1 === 'checkout') $controller->checkout();
             elseif ($method === 'POST' && $param1 === 'registro') $controller->registro();
             elseif ($method === 'POST' && $param1 === 'login') $controller->loginCliente();
@@ -151,17 +156,17 @@ try {
         case '':
             Response::success([
                 'app' => 'Bingus Petstore API',
-                'version' => '2.0.0',
+                'version' => '3.0.0',
                 'endpoints' => [
                     'auth' => '/api/auth/{login|logout|session}',
                     'productos' => '/api/productos',
-                    'vendedores' => '/api/vendedores',
+                    'repartidores' => '/api/repartidores',
                     'pedidos' => '/api/pedidos',
                     'clientes' => '/api/clientes',
                     'dashboard' => '/api/dashboard/stats',
-                    'tienda' => '/api/tienda/{catalogo|categorias|checkout|registro|login|logout|session}'
+                    'tienda' => '/api/tienda/{catalogo|categorias|config|checkout|registro|login|logout|session}'
                 ]
-            ], 'API Bingus Petstore funcionando.');
+            ], 'API Bingus Petstore v3.0 funcionando.');
             break;
 
         default:

@@ -5,25 +5,17 @@
     <div style="text-align:center; margin-bottom:20px;">
         <span style="font-size:50px;">🐾</span>
         <h2>Bingus Petstore</h2>
-        <p style="color:#888; font-size:14px;">Panel de Gestión — Inicia sesión para continuar</p>
-    </div>
-
-    <!-- Selector de Rol -->
-    <div class="role-selector">
-        <div class="role-btn active" data-rol="ADMIN" onclick="selectRol(this)">🔑 Administrador</div>
-        <div class="role-btn" data-rol="VENDEDOR" onclick="selectRol(this)">🛒 Vendedor</div>
+        <p style="color:#888; font-size:14px;">Intranet de Administración — Inicia sesión para continuar</p>
     </div>
 
     <form id="loginForm" onsubmit="handleLogin(event)">
-        <input type="hidden" id="rol" value="ADMIN">
-        
         <div class="form-group">
-            <label id="labelUsuario">Usuario</label>
-            <input type="text" id="usuario" class="form-control" placeholder="Tu usuario" required>
+            <label for="usuario">Usuario</label>
+            <input type="text" id="usuario" class="form-control" placeholder="Tu usuario de administrador" required>
         </div>
 
         <div class="form-group">
-            <label>Contraseña</label>
+            <label for="password">Contraseña</label>
             <input type="password" id="password" class="form-control" placeholder="Tu contraseña" required>
         </div>
 
@@ -31,28 +23,15 @@
             Iniciar Sesión
         </button>
     </form>
+
+    <div style="text-align:center; margin-top:20px;">
+        <a href="/bingus_petstore/views/tienda/tienda.php" style="color:#888; font-size:13px; text-decoration:none;">
+            ← Ir a la Tienda Online
+        </a>
+    </div>
 </div>
 
 <script>
-function selectRol(el) {
-    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('rol').value = el.dataset.rol;
-    
-    // Cambiar label según rol
-    const label = document.getElementById('labelUsuario');
-    const input = document.getElementById('usuario');
-    if (el.dataset.rol === 'VENDEDOR') {
-        label.textContent = 'Email';
-        input.type = 'email';
-        input.placeholder = 'tu.email@bingus.cl';
-    } else {
-        label.textContent = 'Usuario';
-        input.type = 'text';
-        input.placeholder = 'Tu usuario';
-    }
-}
-
 async function handleLogin(e) {
     e.preventDefault();
     const btn = document.getElementById('btnLogin');
@@ -61,8 +40,7 @@ async function handleLogin(e) {
 
     const res = await Api.post('/auth/login', {
         usuario: document.getElementById('usuario').value,
-        password: document.getElementById('password').value,
-        rol: document.getElementById('rol').value
+        password: document.getElementById('password').value
     });
 
     if (res.success) {

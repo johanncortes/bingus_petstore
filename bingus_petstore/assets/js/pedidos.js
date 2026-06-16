@@ -1,7 +1,8 @@
 /**
  * ============================================
- * JS — Pedidos (Listado)
+ * JS — Pedidos (Listado) v3.0
  * ============================================
+ * Actualizado para repartidores y nuevos estados.
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -22,10 +23,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     tbody.innerHTML = pedidos.map(p => {
-        // Badge estado
-        let badgeClass = 'badge-warning';
-        if (p.estado === 'PAGADO') badgeClass = 'badge-success';
-        else if (p.estado === 'CANCELADO') badgeClass = 'badge-danger';
+        // Badge estado con colores para nuevos estados
+        const badgeMap = {
+            'PENDIENTE': 'badge-warning',
+            'PAGADO': 'badge-success',
+            'EN_REPARTO': 'badge-info',
+            'ENTREGADO': 'badge-success',
+            'CANCELADO': 'badge-danger'
+        };
+        const badgeClass = badgeMap[p.estado] || 'badge-warning';
+
+        // Icono de estado
+        const iconMap = {
+            'PENDIENTE': '⏳',
+            'PAGADO': '✅',
+            'EN_REPARTO': '🚚',
+            'ENTREGADO': '📦',
+            'CANCELADO': '❌'
+        };
+        const icon = iconMap[p.estado] || '';
 
         // Productos resumen
         const prods = (p.detalles || []).map(d => 
@@ -37,9 +53,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             <td><strong>#${p.id_pedido}</strong></td>
             <td>${p.fecha}</td>
             <td>${p.cliente_nombre || '-'}</td>
-            <td>${p.vendedor_nombre || '-'}</td>
+            <td>${p.repartidor_nombre || '<em style="color:#999;">Sin asignar</em>'}</td>
             <td><strong>$${Number(p.total).toLocaleString('es-CL')}</strong></td>
-            <td><span class="badge ${badgeClass}">${p.estado}</span></td>
+            <td><span class="badge ${badgeClass}">${icon} ${p.estado}</span></td>
             <td style="font-size:12px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${prods || '-'}</td>
             <td>
                 <a href="/bingus_petstore/views/admin/pedidos/editar.php?id=${p.id_pedido}" class="btn btn-info btn-sm">👁️ Ver</a>

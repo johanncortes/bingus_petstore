@@ -1,10 +1,10 @@
 /**
  * ============================================
- * JS — Tienda Virtual Bingus Petstore
+ * JS — Tienda Virtual Bingus Petstore v3.0
  * ============================================
  * Catálogo, carrito (localStorage) y checkout.
- * Incluye controles de cantidad en tarjetas y
- * soporte para sesión de cliente.
+ * Incluye desglose de IVA en catálogo, carrito y checkout.
+ * Precios en BD son NETOS → IVA se agrega encima.
  */
 
 // ========== ESTADO ==========
@@ -12,7 +12,8 @@ let catalogoDB = [];
 let categoriasDB = [];
 let filtroCategoria = null;
 let filtroBusqueda = '';
-let clienteSesion = null; // datos del cliente si hay sesión
+let clienteSesion = null;
+let tasaIVA = 19; // default, se carga desde API
 
 // ========== CARRITO EN LOCALSTORAGE ==========
 function getCarrito() {
@@ -27,8 +28,14 @@ function setCarrito(carrito) {
     localStorage.setItem('bingus_carrito', JSON.stringify(carrito));
 }
 
+// ========== FORMATEO MONEDA ==========
+function fmt(n) {
+    return Number(Math.round(n)).toLocaleString('es-CL');
+}
+
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', async () => {
+    await cargarConfigIVA();
     await verificarSesionCliente();
     await cargarCategorias();
     await cargarCatalogo();
@@ -43,6 +50,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+
+// ========== CARGAR CONFIG IVA ==========
+async function cargarConfigIVA() {
+    try {
+        const res = await Api.get('/tienda/config');
+        if (res.success && res.data.iva) {
+            tasaIVA = res.data.iva.porcentaje;
+        }
+    } catch {
+        tasaIVA = 19;
+    }
+}
 
 // ========== SESIÓN DE CLIENTE ==========
 async function verificarSesionCliente() {
@@ -113,7 +132,11 @@ function renderCatalogo() {
     }
 
     grid.innerHTML = productos.map(p => {
-        const precioFmt = Number(p.precio).toLocaleString('es-CL');
+        // Precios con IVA (la API ya envía precio_neto, iva, precio_total)
+        const precioNeto = Number(p.precio_neto || p.precio);
+        const iva = Number(p.iva || 0);
+        const precioTotal = Number(p.precio_total || p.precio);
+
         const stockClass = p.stock <= 10 ? 'stock-bajo' : 'stock-ok';
         const stockLabel = p.stock <= 10 ? `¡Últimas ${p.stock}!` : `${p.stock} disponibles`;
         
@@ -152,7 +175,10 @@ function renderCatalogo() {
                 <div class="tienda-card-name">${p.nombre}</div>
                 <div class="tienda-card-desc">${p.descripcion || 'Producto para tu mascota.'}</div>
                 <div class="tienda-card-footer">
-                    <div class="tienda-card-price">$${precioFmt} <small>CLP</small></div>
+                    <div class="tienda-card-price">
+                        <span class="precio-total">$${fmt(precioTotal)}</span>
+                        <span class="precio-iva-tag">IVA incl.</span>
+                    </div>
                     ${accionHtml}
                 </div>
             </div>
@@ -200,6 +226,9 @@ function agregarAlCarrito(id_producto) {
     const producto = catalogoDB.find(p => p.id_producto == id_producto);
     if (!producto) return;
 
+    // Usar precio_total (con IVA) como precio del carrito
+    const precioConIva = Number(producto.precio_total || producto.precio);
+
     let carrito = getCarrito();
     const existente = carrito.find(i => i.id_producto == id_producto);
 
@@ -214,9 +243,11 @@ function agregarAlCarrito(id_producto) {
         carrito.push({
             id_producto: producto.id_producto,
             nombre: producto.nombre,
-            precio: parseFloat(producto.precio),
+            precio: precioConIva,
+            precio_neto: Number(producto.precio_neto || producto.precio),
+            iva_unitario: Number(producto.iva || 0),
             cantidad: 1,
-            subtotal: parseFloat(producto.precio),
+            subtotal: precioConIva,
             imagen: producto.imagen,
             stock: producto.stock
         });
@@ -224,7 +255,7 @@ function agregarAlCarrito(id_producto) {
 
     setCarrito(carrito);
     renderBadgeCarrito();
-    renderCatalogo(); // Re-render to show qty controls
+    renderCatalogo();
 
     mostrarToast(`${producto.nombre} agregado al carrito`, 'success');
 }
@@ -252,7 +283,7 @@ function cambiarCantidadTarjeta(id_producto, delta) {
 
     setCarrito(carrito);
     renderBadgeCarrito();
-    renderCatalogo(); // Re-render to update qty display
+    renderCatalogo();
 }
 
 // ========== CARRITO: RENDER BADGE ==========
@@ -309,7 +340,7 @@ function renderCarritoSidebar() {
             <div class="carrito-item-img">${imgHtml}</div>
             <div class="carrito-item-info">
                 <div class="carrito-item-name">${item.nombre}</div>
-                <div class="carrito-item-price">$${item.subtotal.toLocaleString('es-CL')}</div>
+                <div class="carrito-item-price">$${fmt(item.subtotal)}</div>
             </div>
             <div class="carrito-item-actions">
                 <button class="carrito-item-remove" onclick="eliminarDelCarrito(${index})" title="Eliminar">×</button>
@@ -322,9 +353,21 @@ function renderCarritoSidebar() {
         </div>`;
     }).join('');
 
-    // Total
-    const total = carrito.reduce((sum, i) => sum + i.subtotal, 0);
-    document.getElementById('carritoTotalValor').textContent = '$' + total.toLocaleString('es-CL');
+    // Desglose de totales con IVA
+    const totalConIva = carrito.reduce((sum, i) => sum + i.subtotal, 0);
+    const totalNeto = Math.round(totalConIva / (1 + tasaIVA / 100));
+    const totalIva = totalConIva - totalNeto;
+
+    const totalEl = document.getElementById('carritoTotalValor');
+    if (totalEl) {
+        totalEl.innerHTML = `
+            <div class="carrito-desglose">
+                <div class="carrito-desglose-line"><span>Subtotal Neto</span><span>$${fmt(totalNeto)}</span></div>
+                <div class="carrito-desglose-line"><span>IVA (${tasaIVA}%)</span><span>$${fmt(totalIva)}</span></div>
+                <div class="carrito-desglose-total"><span>Total</span><span>$${fmt(totalConIva)}</span></div>
+            </div>
+        `;
+    }
 }
 
 // ========== CARRITO: ACCIONES ==========
@@ -347,7 +390,7 @@ function cambiarCantidad(index, delta) {
     setCarrito(carrito);
     renderCarritoSidebar();
     renderBadgeCarrito();
-    renderCatalogo(); // Sync card qty controls
+    renderCatalogo();
 }
 
 function eliminarDelCarrito(index) {
@@ -356,7 +399,7 @@ function eliminarDelCarrito(index) {
     setCarrito(carrito);
     renderCarritoSidebar();
     renderBadgeCarrito();
-    renderCatalogo(); // Sync card qty controls
+    renderCatalogo();
 }
 
 function vaciarCarrito() {
@@ -364,7 +407,7 @@ function vaciarCarrito() {
     setCarrito([]);
     renderCarritoSidebar();
     renderBadgeCarrito();
-    renderCatalogo(); // Sync card qty controls
+    renderCatalogo();
 }
 
 // ========== CHECKOUT ==========
@@ -383,20 +426,26 @@ function abrirCheckout() {
         document.getElementById('chkDireccion').value = clienteSesion.direccion || '';
     }
 
-    // Render resumen
+    // Render resumen con IVA
     const resumenHtml = carrito.map(item => `
         <div class="checkout-resumen-item">
             <span>${item.nombre} <span class="qty">×${item.cantidad}</span></span>
-            <span>$${item.subtotal.toLocaleString('es-CL')}</span>
+            <span>$${fmt(item.subtotal)}</span>
         </div>
     `).join('');
 
-    const total = carrito.reduce((sum, i) => sum + i.subtotal, 0);
+    const totalConIva = carrito.reduce((sum, i) => sum + i.subtotal, 0);
+    const totalNeto = Math.round(totalConIva / (1 + tasaIVA / 100));
+    const totalIva = totalConIva - totalNeto;
 
     document.getElementById('checkoutResumen').innerHTML = resumenHtml + `
-        <div class="checkout-resumen-total">
-            <span>Total</span>
-            <span>$${total.toLocaleString('es-CL')}</span>
+        <div class="checkout-resumen-desglose">
+            <div class="checkout-resumen-line"><span>Subtotal Neto</span><span>$${fmt(totalNeto)}</span></div>
+            <div class="checkout-resumen-line"><span>IVA (${tasaIVA}%)</span><span>$${fmt(totalIva)}</span></div>
+            <div class="checkout-resumen-total">
+                <span>Total a Pagar</span>
+                <span>$${fmt(totalConIva)}</span>
+            </div>
         </div>`;
 
     document.getElementById('checkoutOverlay').classList.add('visible');
@@ -416,14 +465,15 @@ async function confirmarPedido() {
     btnConfirmar.disabled = true;
     btnConfirmar.textContent = 'Procesando...';
 
-    // Build request body
+    // Build request body — precios incluyen IVA
     const body = {
         items: carrito.map(i => ({
             id_producto: i.id_producto,
             cantidad: i.cantidad,
-            precio: i.precio,
-            subtotal: i.subtotal
-        }))
+            precio: i.precio,        // precio con IVA
+            subtotal: i.subtotal     // subtotal con IVA
+        })),
+        direccion_entrega: document.getElementById('chkDireccion').value.trim() || null
     };
 
     // If not logged in, include client data from form
@@ -466,6 +516,7 @@ async function confirmarPedido() {
                 html: `
                     <p style="font-size:15px; color:#666;">Tu pedido <strong>#${res.data.id_pedido}</strong> fue creado exitosamente.</p>
                     <p style="font-size:13px; color:#999; margin-top:10px;">Estado: <strong>Pendiente de confirmación</strong></p>
+                    <p style="font-size:12px; color:#aaa; margin-top:5px;">Un repartidor será asignado pronto.</p>
                 `,
                 confirmButtonColor: '#667eea',
                 confirmButtonText: 'Entendido'

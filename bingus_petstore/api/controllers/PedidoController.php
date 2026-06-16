@@ -3,7 +3,10 @@
  * ============================================
  * CAPA 2 — Controlador: Pedidos
  * ============================================
- * Endpoints para listar, ver detalle, crear y cambiar estado de pedidos.
+ * Endpoints para listar, ver detalle, asignar repartidor
+ * y cambiar estado de pedidos.
+ * Flujo: PENDIENTE → PAGADO → EN_REPARTO → ENTREGADO
+ *                            → CANCELADO
  */
 
 require_once __DIR__ . '/../models/PedidoModel.php';
@@ -51,41 +54,9 @@ class PedidoController {
     }
 
     /**
-     * POST /api/pedidos
-     * Crear pedido desde POS
-     * Body: { "id_cliente": 1, "estado": "PAGADO", "items": [...] }
-     */
-    public function crear() {
-        AuthMiddleware::verificarVendedor();
-        
-        $data = json_decode(file_get_contents('php://input'), true);
-        $usuario = AuthMiddleware::getUsuarioActual();
-
-        $id_cliente = $data['id_cliente'] ?? null;
-        $estado = $data['estado'] ?? 'PENDIENTE';
-        $items = $data['items'] ?? [];
-
-        if (empty($id_cliente)) Response::error('Debe seleccionar un cliente.');
-        if (empty($items)) Response::error('El carrito está vacío.');
-
-        try {
-            $id_pedido = $this->model->crearPedido($id_cliente, $usuario['id'], $estado, $items);
-            
-            $msg_extra = ($estado === 'PAGADO') ? 'Stock descontado.' : 'Guardado como pendiente (Stock intacto).';
-            Response::success(
-                ['id_pedido' => $id_pedido],
-                "Pedido #$id_pedido registrado. $msg_extra",
-                201
-            );
-        } catch (Exception $e) {
-            Response::error('Error al crear pedido: ' . $e->getMessage());
-        }
-    }
-
-    /**
      * PUT /api/pedidos/{id}/estado
      * Cambiar estado de un pedido
-     * Body: { "estado": "PAGADO|CANCELADO" }
+     * Body: { "estado": "PAGADO|EN_REPARTO|ENTREGADO|CANCELADO" }
      */
     public function cambiarEstado($id) {
         AuthMiddleware::verificarAdmin();
@@ -95,12 +66,27 @@ class PedidoController {
 
         if (empty($nuevo_estado)) Response::error('Debe indicar el nuevo estado.');
 
+        $estados_validos = ['PENDIENTE', 'PAGADO', 'EN_REPARTO', 'ENTREGADO', 'CANCELADO'];
+        if (!in_array($nuevo_estado, $estados_validos)) {
+            Response::error('Estado no válido. Opciones: ' . implode(', ', $estados_validos));
+        }
+
         // Verificar pedido actual
         $pedido = $this->model->getPedidoById($id);
         if (!$pedido) Response::notFound('Pedido no encontrado.');
 
-        if ($pedido['estado'] !== 'PENDIENTE') {
-            Response::error('Solo pedidos PENDIENTES pueden ser modificados.');
+        // Validar transiciones de estado
+        $transiciones_validas = [
+            'PENDIENTE' => ['PAGADO', 'CANCELADO'],
+            'PAGADO' => ['EN_REPARTO', 'CANCELADO'],
+            'EN_REPARTO' => ['ENTREGADO'],
+            'ENTREGADO' => [],
+            'CANCELADO' => []
+        ];
+
+        $estado_actual = $pedido['estado'];
+        if (!in_array($nuevo_estado, $transiciones_validas[$estado_actual] ?? [])) {
+            Response::error("No se puede cambiar de '$estado_actual' a '$nuevo_estado'.");
         }
 
         // Si pasa a PAGADO, descontar stock
@@ -112,8 +98,36 @@ class PedidoController {
             }
         }
 
+        // Si pasa a EN_REPARTO, verificar que tenga repartidor asignado
+        if ($nuevo_estado === 'EN_REPARTO' && empty($pedido['id_repartidor'])) {
+            Response::error('Debe asignar un repartidor antes de enviar a reparto.');
+        }
+
         $this->model->updateEstadoPedido($id, $nuevo_estado);
         Response::success(null, "Pedido #$id actualizado a: $nuevo_estado");
+    }
+
+    /**
+     * PUT /api/pedidos/{id}/repartidor
+     * Asignar repartidor a un pedido
+     * Body: { "id_repartidor": 1 }
+     */
+    public function asignarRepartidor($id) {
+        AuthMiddleware::verificarAdmin();
+
+        $data = json_decode(file_get_contents('php://input'), true);
+        $id_repartidor = $data['id_repartidor'] ?? null;
+
+        if (empty($id_repartidor)) {
+            Response::error('Debe indicar el ID del repartidor.');
+        }
+
+        // Verificar que el pedido exista
+        $pedido = $this->model->getPedidoById($id);
+        if (!$pedido) Response::notFound('Pedido no encontrado.');
+
+        $this->model->asignarRepartidor($id, $id_repartidor);
+        Response::success(null, "Repartidor asignado al pedido #$id.");
     }
 }
 ?>

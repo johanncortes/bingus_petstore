@@ -4,7 +4,7 @@
  * CAPA 3 — Modelo: Tienda Pública
  * ============================================
  * Acceso a datos para la tienda virtual (e-commerce).
- * Consultas públicas sin autenticación requerida.
+ * Incluye cálculo de IVA en catálogo y checkout.
  */
 
 require_once __DIR__ . '/../config/Database.php';
@@ -12,18 +12,30 @@ require_once __DIR__ . '/../config/Database.php';
 class TiendaModel {
     private $conn;
 
-    /** ID del vendedor por defecto para pedidos online */
-    const VENDEDOR_ONLINE_ID = 1;
-
     public function __construct() {
         $this->conn = Database::getInstance()->getConnection();
     }
 
     /**
+     * Obtener la tasa de IVA vigente
+     * @return float Porcentaje de IVA (ej: 19.00)
+     */
+    public function getTasaIVA() {
+        $stmt = $this->conn->prepare(
+            "SELECT porcentaje FROM configuracion_impuestos WHERE nombre = 'IVA' AND activo = 1 ORDER BY fecha_vigencia DESC LIMIT 1"
+        );
+        $stmt->execute();
+        $result = $stmt->fetchColumn();
+        return $result ? (float)$result : 19.00; // Default 19% si no se encuentra
+    }
+
+    /**
      * Obtener catálogo de productos disponibles (activos + stock > 0)
-     * Incluye categoría, descripción e imagen
+     * Incluye categoría, descripción, imagen y desglose de IVA
      */
     public function getCatalogo() {
+        $tasa_iva = $this->getTasaIVA();
+
         $query = "SELECT p.id_producto, p.nombre, p.descripcion, p.precio, p.stock, p.imagen,
                          c.nombre as categoria_nombre, c.id_categoria
                   FROM productos p
@@ -32,7 +44,23 @@ class TiendaModel {
                   ORDER BY c.nombre, p.nombre";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
-        return $stmt->fetchAll();
+        $productos = $stmt->fetchAll();
+
+        // Agregar desglose de IVA a cada producto
+        // Los precios en BD son NETOS, el IVA se agrega encima
+        foreach ($productos as &$p) {
+            $precio_neto = (float)$p['precio'];
+            $iva = round($precio_neto * ($tasa_iva / 100), 2);
+            $precio_total = round($precio_neto + $iva, 2);
+
+            $p['precio_neto'] = $precio_neto;
+            $p['iva'] = $iva;
+            $p['precio_total'] = $precio_total;
+            $p['tasa_iva'] = $tasa_iva;
+        }
+        unset($p);
+
+        return $productos;
     }
 
     /**
@@ -119,29 +147,54 @@ class TiendaModel {
     }
 
     /**
-     * Crear pedido completo desde la tienda virtual
-     * - Estado por defecto: PENDIENTE (no descuenta stock hasta que admin apruebe)
-     * - Vendedor: VENDEDOR_ONLINE_ID (asignado automáticamente)
+     * Crear pedido completo desde la tienda virtual con IVA
+     * - Estado por defecto: PENDIENTE
+     * - Repartidor: NULL (se asigna después por el admin)
+     * - IVA se calcula y almacena por cada línea
      *
      * @param int $id_cliente
      * @param array $items [['id_producto'=>..., 'cantidad'=>..., 'precio'=>..., 'subtotal'=>...], ...]
+     *                     'precio' y 'subtotal' incluyen IVA (precio_total)
+     * @param string|null $direccion_entrega
      * @return int ID del pedido creado
      */
-    public function crearPedidoTienda($id_cliente, $items) {
+    public function crearPedidoTienda($id_cliente, $items, $direccion_entrega = null) {
+        $tasa_iva = $this->getTasaIVA();
+
         $this->conn->beginTransaction();
 
         try {
-            // Calcular total
-            $total = 0;
-            foreach ($items as $item) {
-                $total += $item['subtotal'];
-            }
+            // Calcular totales con desglose de IVA
+            $total_con_iva = 0;
+            $total_neto = 0;
+            $total_iva = 0;
 
-            // Insertar cabecera del pedido
+            foreach ($items as &$item) {
+                // El precio que viene del frontend incluye IVA
+                $precio_con_iva = (float)$item['precio'];
+                $precio_neto = round($precio_con_iva / (1 + $tasa_iva / 100), 2);
+                $iva_unitario = round($precio_con_iva - $precio_neto, 2);
+
+                $subtotal = round($precio_con_iva * $item['cantidad'], 2);
+                $neto_linea = round($precio_neto * $item['cantidad'], 2);
+                $iva_linea = round($iva_unitario * $item['cantidad'], 2);
+
+                $item['precio_neto'] = $precio_neto;
+                $item['iva'] = $iva_linea;
+                $item['subtotal'] = $subtotal;
+
+                $total_con_iva += $subtotal;
+                $total_neto += $neto_linea;
+                $total_iva += $iva_linea;
+            }
+            unset($item);
+
+            // Insertar cabecera del pedido (sin repartidor asignado)
             $stmt = $this->conn->prepare(
-                "INSERT INTO pedidos (id_cliente, id_vendedor, fecha, estado, total) VALUES (?, ?, NOW(), 'PENDIENTE', ?)"
+                "INSERT INTO pedidos (id_cliente, id_repartidor, fecha, estado, direccion_entrega, total, subtotal_neto, total_iva) 
+                 VALUES (?, NULL, NOW(), 'PENDIENTE', ?, ?, ?, ?)"
             );
-            $stmt->execute([$id_cliente, self::VENDEDOR_ONLINE_ID, $total]);
+            $stmt->execute([$id_cliente, $direccion_entrega, $total_con_iva, $total_neto, $total_iva]);
             $id_pedido = $this->conn->lastInsertId();
 
             // Insertar detalles y verificar stock
@@ -159,10 +212,14 @@ class TiendaModel {
                     throw new Exception("Stock insuficiente para \"{$producto['nombre']}\". Disponible: {$producto['stock']}, Solicitado: {$item['cantidad']}.");
                 }
 
-                // Guardar detalle
+                // Guardar detalle con IVA
                 $this->conn->prepare(
-                    "INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)"
-                )->execute([$id_pedido, $item['id_producto'], $item['cantidad'], $item['precio'], $item['subtotal']]);
+                    "INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad, precio_unitario, precio_neto, iva, subtotal) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)"
+                )->execute([
+                    $id_pedido, $item['id_producto'], $item['cantidad'],
+                    $item['precio'], $item['precio_neto'], $item['iva'], $item['subtotal']
+                ]);
             }
 
             $this->conn->commit();

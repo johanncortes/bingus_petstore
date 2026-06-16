@@ -4,6 +4,7 @@
  * CAPA 2 — Controlador: Autenticación
  * ============================================
  * Endpoints: login, logout, session
+ * Solo para Administradores (Intranet).
  */
 
 require_once __DIR__ . '/../models/AuthModel.php';
@@ -18,7 +19,7 @@ class AuthController {
 
     /**
      * POST /api/auth/login
-     * Body: { "usuario": "...", "password": "...", "rol": "ADMIN|VENDEDOR" }
+     * Body: { "usuario": "...", "password": "..." }
      */
     public function login() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -29,34 +30,30 @@ class AuthController {
         
         $usuario = trim($data['usuario'] ?? '');
         $password = $data['password'] ?? '';
-        $rol = strtoupper(trim($data['rol'] ?? 'ADMIN'));
 
         if (empty($usuario) || empty($password)) {
             Response::error('Usuario y contraseña son obligatorios.');
         }
 
-        $user = $this->model->validarLogin($usuario, $password, $rol);
+        $user = $this->model->validarLogin($usuario, $password);
 
         if ($user) {
             if (session_status() === PHP_SESSION_NONE) session_start();
             
             $_SESSION['usuario_id'] = $user['id'];
             $_SESSION['usuario_nombre'] = $user['nombre'];
-            $_SESSION['usuario_rol'] = $user['rol'];
-
-            if ($user['rol'] === 'ADMIN') {
-                $_SESSION['admin_id'] = $user['id'];
-                $_SESSION['admin_nombre'] = $user['nombre'];
-            }
+            $_SESSION['usuario_rol'] = 'ADMIN';
+            $_SESSION['admin_id'] = $user['id'];
+            $_SESSION['admin_nombre'] = $user['nombre'];
 
             Response::success([
                 'id' => $user['id'],
                 'nombre' => $user['nombre'],
-                'rol' => $user['rol'],
-                'redirect' => $user['rol'] === 'ADMIN' ? 'views/admin/dashboard.php' : 'views/vendedor/pos.php'
+                'rol' => 'ADMIN',
+                'redirect' => 'views/admin/dashboard.php'
             ], 'Login exitoso.');
         } else {
-            Response::error('Credenciales incorrectas para el perfil seleccionado.', 401);
+            Response::error('Credenciales incorrectas.', 401);
         }
     }
 

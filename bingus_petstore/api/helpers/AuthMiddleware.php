@@ -10,7 +10,7 @@
 class AuthMiddleware {
     
     /**
-     * Verificar que haya sesión activa (cualquier rol)
+     * Verificar que haya sesión activa (cualquier rol interno)
      */
     public static function verificarSesion() {
         if (session_status() === PHP_SESSION_NONE) {
@@ -34,18 +34,7 @@ class AuthMiddleware {
     }
 
     /**
-     * Verificar que sea Vendedor
-     */
-    public static function verificarVendedor() {
-        self::verificarSesion();
-        
-        if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'VENDEDOR') {
-            Response::error('Acceso denegado. Se requiere rol de Vendedor.', 403);
-        }
-    }
-
-    /**
-     * Verificar que sea Admin O Vendedor
+     * Verificar que esté autenticado (admin)
      */
     public static function verificarAutenticado() {
         self::verificarSesion();

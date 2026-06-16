@@ -4,6 +4,7 @@
  * CAPA 2 — Controlador: Dashboard
  * ============================================
  * Estadísticas del panel de administración.
+ * Incluye métricas de repartidores y pedidos en reparto.
  */
 
 require_once __DIR__ . '/../config/Database.php';
@@ -27,7 +28,13 @@ class DashboardController {
             $stats = $stmt->fetch();
 
             if (!$stats) {
-                $stats = ['total_productos' => 0, 'total_vendedores' => 0, 'total_pedidos' => 0];
+                $stats = [
+                    'total_productos' => 0, 
+                    'total_repartidores' => 0, 
+                    'total_pedidos' => 0,
+                    'pedidos_sin_repartidor' => 0,
+                    'pedidos_en_reparto' => 0
+                ];
             }
 
             Response::success($stats, 'Estadísticas obtenidas.');

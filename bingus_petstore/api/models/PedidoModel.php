@@ -4,6 +4,7 @@
  * CAPA 3 — Modelo: Pedidos
  * ============================================
  * Acceso a datos para pedidos y detalle de pedidos.
+ * Incluye soporte para repartidores e IVA.
  */
 
 require_once __DIR__ . '/../config/Database.php';
@@ -16,7 +17,7 @@ class PedidoModel {
     }
 
     /**
-     * Obtener todos los pedidos con datos de cliente y vendedor
+     * Obtener todos los pedidos con datos de cliente y repartidor
      */
     public function getPedidos() {
         $query = "SELECT * FROM v_pedidos_detalle ORDER BY fecha DESC";
@@ -26,16 +27,18 @@ class PedidoModel {
     }
 
     /**
-     * Obtener un pedido por ID con nombres de cliente y vendedor
+     * Obtener un pedido por ID con nombres de cliente y repartidor
      */
     public function getPedidoById($id) {
         $query = "SELECT p.*, 
                          COALESCE(c.nombre, 'Cliente Eliminado') as cliente_nombre,
                          COALESCE(c.rut, 'S/RUT') as cliente_rut,
-                         COALESCE(v.nombre, 'Vendedor Eliminado') as vendedor_nombre 
+                         COALESCE(c.telefono, 'S/Tel') as cliente_telefono,
+                         COALESCE(c.direccion, 'S/Dir') as cliente_direccion,
+                         COALESCE(r.nombre, 'Sin asignar') as repartidor_nombre 
                   FROM pedidos p 
                   LEFT JOIN clientes c ON p.id_cliente = c.id_cliente 
-                  LEFT JOIN vendedores v ON p.id_vendedor = v.id_vendedor 
+                  LEFT JOIN repartidores r ON p.id_repartidor = r.id_repartidor 
                   WHERE p.id_pedido = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([':id' => $id]);
@@ -67,6 +70,16 @@ class PedidoModel {
     }
 
     /**
+     * Asignar repartidor a un pedido
+     */
+    public function asignarRepartidor($id_pedido, $id_repartidor) {
+        $query = "UPDATE pedidos SET id_repartidor = :id_repartidor WHERE id_pedido = :id_pedido";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':id_repartidor' => $id_repartidor, ':id_pedido' => $id_pedido]);
+        return $stmt->rowCount();
+    }
+
+    /**
      * Descontar stock cuando pedido pasa a PAGADO
      */
     public function descontarStockDePedido($id_pedido) {
@@ -80,47 +93,72 @@ class PedidoModel {
     }
 
     /**
-     * Crear un pedido completo (cabecera + detalle) — usado por POS
+     * Crear un pedido completo (cabecera + detalle) con IVA
      * @param int $id_cliente
-     * @param int $id_vendedor
-     * @param string $estado - 'PAGADO' o 'PENDIENTE'
+     * @param string $estado - 'PENDIENTE', 'PAGADO', etc.
      * @param array $items - [['id_producto'=>..., 'cantidad'=>..., 'precio'=>..., 'subtotal'=>...], ...]
+     * @param string|null $direccion_entrega
+     * @param float $tasa_iva - Tasa de IVA (ej: 19.00)
      * @return int - ID del pedido creado
      */
-    public function crearPedido($id_cliente, $id_vendedor, $estado, $items) {
+    public function crearPedido($id_cliente, $estado, $items, $direccion_entrega = null, $tasa_iva = 19.00) {
         $this->conn->beginTransaction();
 
         try {
-            // Calcular total
-            $total = 0;
-            foreach ($items as $item) {
-                $total += $item['subtotal'];
+            // Calcular totales con IVA
+            $total_con_iva = 0;
+            $total_neto = 0;
+            $total_iva = 0;
+
+            foreach ($items as &$item) {
+                $subtotal = $item['subtotal']; // precio * cantidad (precio ya incluye IVA conceptualmente, pero aquí viene neto)
+                $neto_unitario = round($item['precio'] / (1 + $tasa_iva / 100), 2);
+                $iva_unitario = round($item['precio'] - $neto_unitario, 2);
+                $neto_linea = round($neto_unitario * $item['cantidad'], 2);
+                $iva_linea = round($iva_unitario * $item['cantidad'], 2);
+
+                $item['precio_neto'] = $neto_unitario;
+                $item['iva'] = $iva_linea;
+
+                $total_con_iva += $subtotal;
+                $total_neto += $neto_linea;
+                $total_iva += $iva_linea;
             }
+            unset($item);
 
             // Insertar cabecera
             $stmt = $this->conn->prepare(
-                "INSERT INTO pedidos (id_cliente, id_vendedor, fecha, estado, total) VALUES (?, ?, NOW(), ?, ?)"
+                "INSERT INTO pedidos (id_cliente, id_repartidor, fecha, estado, direccion_entrega, total, subtotal_neto, total_iva) 
+                 VALUES (?, NULL, NOW(), ?, ?, ?, ?, ?)"
             );
-            $stmt->execute([$id_cliente, $id_vendedor, $estado, $total]);
+            $stmt->execute([$id_cliente, $estado, $direccion_entrega, $total_con_iva, $total_neto, $total_iva]);
             $id_pedido = $this->conn->lastInsertId();
 
-            // Insertar detalles y verificar stock
+            // Insertar detalles con IVA
             foreach ($items as $item) {
                 // Verificar stock actual
-                $stmt = $this->conn->prepare("SELECT stock FROM productos WHERE id_producto = ?");
+                $stmt = $this->conn->prepare("SELECT stock, nombre FROM productos WHERE id_producto = ? AND activo = 1");
                 $stmt->execute([$item['id_producto']]);
-                $stock_db = $stmt->fetchColumn();
+                $producto = $stmt->fetch();
 
-                if ($estado === 'PAGADO' && $stock_db < $item['cantidad']) {
-                    throw new Exception("Stock insuficiente para producto ID: " . $item['id_producto']);
+                if (!$producto) {
+                    throw new Exception("Producto ID " . $item['id_producto'] . " no disponible.");
                 }
 
-                // Guardar detalle
-                $this->conn->prepare(
-                    "INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)"
-                )->execute([$id_pedido, $item['id_producto'], $item['cantidad'], $item['precio'], $item['subtotal']]);
+                if ($producto['stock'] < $item['cantidad']) {
+                    throw new Exception("Stock insuficiente para \"{$producto['nombre']}\". Disponible: {$producto['stock']}, Solicitado: {$item['cantidad']}.");
+                }
 
-                // Descontar stock solo si es PAGADO
+                // Guardar detalle con IVA
+                $this->conn->prepare(
+                    "INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad, precio_unitario, precio_neto, iva, subtotal) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)"
+                )->execute([
+                    $id_pedido, $item['id_producto'], $item['cantidad'], 
+                    $item['precio'], $item['precio_neto'], $item['iva'], $item['subtotal']
+                ]);
+
+                // Descontar stock si es PAGADO
                 if ($estado === 'PAGADO') {
                     $this->conn->prepare(
                         "UPDATE productos SET stock = stock - ? WHERE id_producto = ?"

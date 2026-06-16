@@ -1,15 +1,15 @@
-<?php $page_title = 'Editar Vendedor - Bingus Petstore'; ?>
+<?php $page_title = 'Editar Repartidor - Bingus Petstore'; ?>
 <?php include __DIR__ . '/../../layouts/header.php'; ?>
 
 <div class="container-sm">
     <div class="page-header">
-        <h1>✏️ Editar Vendedor</h1>
-        <a href="/bingus_petstore/views/admin/vendedores/listar.php" class="btn btn-secondary">← Volver</a>
+        <h1>✏️ Editar Repartidor</h1>
+        <a href="/bingus_petstore/views/admin/repartidores/listar.php" class="btn btn-secondary">← Volver</a>
     </div>
 
     <div class="card">
         <div class="card-body">
-            <form id="formEditar" onsubmit="editarVendedor(event)">
+            <form id="formEditar" onsubmit="editarRepartidor(event)">
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Nombre Completo</label>
@@ -46,28 +46,28 @@
 <script src="/bingus_petstore/assets/js/api.js"></script>
 <script>
 const params = new URLSearchParams(window.location.search);
-const idVendedor = params.get('id');
+const idRepartidor = params.get('id');
 
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!idVendedor) { window.location.href = '/bingus_petstore/views/admin/vendedores/listar.php'; return; }
+    if (!idRepartidor) { window.location.href = '/bingus_petstore/views/admin/repartidores/listar.php'; return; }
 
-    const res = await Api.get('/vendedores/' + idVendedor);
+    const res = await Api.get('/repartidores/' + idRepartidor);
     if (res.success) {
-        const v = res.data;
-        document.getElementById('nombre').value = v.nombre;
-        document.getElementById('rut').value = v.rut;
-        document.getElementById('email').value = v.email;
-        document.getElementById('telefono').value = v.telefono || '';
-        document.getElementById('fecha').value = v.fecha_contratacion || '';
+        const r = res.data;
+        document.getElementById('nombre').value = r.nombre;
+        document.getElementById('rut').value = r.rut;
+        document.getElementById('email').value = r.email;
+        document.getElementById('telefono').value = r.telefono || '';
+        document.getElementById('fecha').value = r.fecha_contratacion || '';
     } else {
         Api.alert('error', 'Error', res.message);
     }
 });
 
-async function editarVendedor(e) {
+async function editarRepartidor(e) {
     e.preventDefault();
 
-    const res = await Api.put('/vendedores/' + idVendedor, {
+    const res = await Api.put('/repartidores/' + idRepartidor, {
         nombre: document.getElementById('nombre').value,
         rut: document.getElementById('rut').value,
         email: document.getElementById('email').value,
@@ -77,7 +77,7 @@ async function editarVendedor(e) {
 
     if (res.success) {
         Api.alert('success', 'Actualizado', res.message);
-        setTimeout(() => window.location.href = '/bingus_petstore/views/admin/vendedores/listar.php', 1500);
+        setTimeout(() => window.location.href = '/bingus_petstore/views/admin/repartidores/listar.php', 1500);
     } else {
         Api.alert('error', 'Error', res.message);
     }
