@@ -2,7 +2,8 @@
 -- MIGRACIÓN v3.0 — Bingus Petstore
 -- ============================================
 -- Limpieza total + Vendedores → Repartidores + IVA
--- Ejecutar sobre la BD existente: bingus_petstore2
+-- Ejecutar sobre la BD ORIGINAL: bingus_petstore2
+-- (Importar bingus_petstore2.sql primero, luego ejecutar esto)
 -- ============================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -33,39 +34,41 @@ ALTER TABLE auditoria_cambios AUTO_INCREMENT = 1;
 -- ============================================
 
 -- 2.1 Eliminar FK de pedidos → vendedores
-ALTER TABLE pedidos DROP FOREIGN KEY pedidos_ibfk_2;
+ALTER TABLE pedidos DROP FOREIGN KEY `pedidos_ibfk_2`;
 
 -- 2.2 Eliminar la vista que depende de vendedores
 DROP VIEW IF EXISTS v_pedidos_detalle;
 DROP VIEW IF EXISTS v_catalogo_pos;
 
--- 2.3 Eliminar los datos actuales de vendedores (se reinsertarán como repartidores)
+-- 2.3 Eliminar los datos actuales de vendedores
 DELETE FROM vendedores;
 
--- 2.4 Renombrar la tabla
+-- 2.4 Eliminar FK de vendedores → administradores (ANTES de renombrar)
+ALTER TABLE vendedores DROP FOREIGN KEY `vendedores_ibfk_1`;
+
+-- 2.5 Renombrar la tabla
 RENAME TABLE vendedores TO repartidores;
 
--- 2.5 Renombrar columna id_vendedor → id_repartidor
+-- 2.6 Renombrar columna id_vendedor → id_repartidor
 ALTER TABLE repartidores CHANGE `id_vendedor` `id_repartidor` INT(11) NOT NULL AUTO_INCREMENT;
 
--- 2.6 Eliminar columnas de login (ya no necesitan acceso al sistema)
-ALTER TABLE repartidores DROP COLUMN IF EXISTS `contrasena`;
-ALTER TABLE repartidores DROP COLUMN IF EXISTS `usuario`;
+-- 2.7 Eliminar columnas de login (ya no necesitan acceso al sistema)
+ALTER TABLE repartidores DROP COLUMN `contrasena`;
+ALTER TABLE repartidores DROP COLUMN `usuario`;
 
--- 2.7 Agregar columna de disponibilidad
+-- 2.8 Agregar columna de disponibilidad
 ALTER TABLE repartidores ADD COLUMN `estado_disponibilidad` ENUM('DISPONIBLE','EN_REPARTO','INACTIVO') NOT NULL DEFAULT 'DISPONIBLE' AFTER `activo`;
 
--- 2.8 Renombrar índices de vendedores
-ALTER TABLE repartidores DROP INDEX IF EXISTS `email`;
-ALTER TABLE repartidores DROP INDEX IF EXISTS `idx_rut_vendedor`;
+-- 2.9 Renombrar índices
+ALTER TABLE repartidores DROP INDEX `email`;
+ALTER TABLE repartidores DROP INDEX `idx_rut_vendedor`;
 ALTER TABLE repartidores ADD UNIQUE KEY `email` (`email`);
 ALTER TABLE repartidores ADD UNIQUE KEY `idx_rut_repartidor` (`rut`);
 
--- 2.9 Renombrar FK a administradores
-ALTER TABLE repartidores DROP FOREIGN KEY vendedores_ibfk_1;
+-- 2.10 Recrear FK con nombre estandarizado
 ALTER TABLE repartidores ADD CONSTRAINT `repartidores_ibfk_1` FOREIGN KEY (`id_administrador`) REFERENCES `administradores` (`id_administrador`) ON UPDATE CASCADE;
 
--- 2.10 Reset AUTO_INCREMENT
+-- 2.11 Reset AUTO_INCREMENT
 ALTER TABLE repartidores AUTO_INCREMENT = 1;
 
 -- ============================================
@@ -85,11 +88,13 @@ ALTER TABLE pedidos MODIFY COLUMN `estado` VARCHAR(20) NOT NULL DEFAULT 'PENDIEN
 
 -- 3.4 Recrear FK a repartidores (permitir NULL para pedidos online sin repartidor asignado)
 ALTER TABLE pedidos MODIFY COLUMN `id_repartidor` INT(11) DEFAULT NULL;
-ALTER TABLE pedidos ADD CONSTRAINT `pedidos_ibfk_2` FOREIGN KEY (`id_repartidor`) REFERENCES `repartidores` (`id_repartidor`);
 
 -- 3.5 Renombrar índice
-ALTER TABLE pedidos DROP INDEX IF EXISTS `id_vendedor`;
+ALTER TABLE pedidos DROP INDEX `id_vendedor`;
 ALTER TABLE pedidos ADD KEY `id_repartidor` (`id_repartidor`);
+
+-- 3.6 Recrear FK a repartidores
+ALTER TABLE pedidos ADD CONSTRAINT `pedidos_ibfk_2` FOREIGN KEY (`id_repartidor`) REFERENCES `repartidores` (`id_repartidor`);
 
 -- ============================================
 -- PASO 4: ACTUALIZAR TABLA DETALLE_PEDIDO (IVA)
