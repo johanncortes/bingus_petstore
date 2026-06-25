@@ -39,7 +39,7 @@ define('APP_ENV', 'development');  // 'development' | 'production'
 // ============================================
 
 define('APP_HOST', 'localhost');       // ← IP de esta máquina (Windows 7 VM)
-define('DB_HOST', 'localhost');        // ← IP de la máquina con BD (Linux Mint VM)
+define('DB_HOST', '192.168.1.72');        // ← IP de la máquina con BD (Linux Mint VM)
 define('DB_NAME', 'bingus_petstore2');
 define('DB_USER', 'root');            // ← En producción: 'bingus_app'
 define('DB_PASS', '');                // ← En producción: contraseña segura

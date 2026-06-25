@@ -51,7 +51,7 @@ echo ""
 echo "[3/6] Creando base de datos y usuario..."
 
 # === MODIFICAR ESTAS VARIABLES ===
-IP_WINDOWS7="192.168.1.10"  # ← Cambiar a la IP de la VM Windows 7
+IP_WINDOWS7="%"  # ← Cambiar a la IP de la VM Windows 7
 DB_PASSWORD="B1ngu5_S3cur3_2026"  # ← Cambiar a una contraseña segura
 # ==================================
 
