@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/../models/TiendaModel.php';
 require_once __DIR__ . '/../helpers/Response.php';
+require_once __DIR__ . '/../helpers/Validaciones.php';
 
 class TiendaController {
     private $model;
@@ -71,13 +72,27 @@ class TiendaController {
         $telefono = trim($data['telefono'] ?? '');
         $direccion = trim($data['direccion'] ?? '');
 
-        // Validaciones
+        // Validaciones básicas de campos obligatorios
         if (empty($nombre) || empty($rut) || empty($email) || empty($password)) {
             Response::error('Nombre, RUT, email y contraseña son obligatorios.');
         }
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Response::error('El formato del email no es válido.');
+        // Validaciones REGEX
+        $resultadoRut = Validaciones::validarRut($rut);
+        if (!$resultadoRut['valido']) {
+            Response::error($resultadoRut['mensaje']);
+        }
+
+        $resultadoEmail = Validaciones::validarEmail($email, true);
+        if (!$resultadoEmail['valido']) {
+            Response::error($resultadoEmail['mensaje']);
+        }
+
+        if (!empty($telefono)) {
+            $resultadoTel = Validaciones::validarTelefono($telefono);
+            if (!$resultadoTel['valido']) {
+                Response::error($resultadoTel['mensaje']);
+            }
         }
 
         if (strlen($password) < 6) {
@@ -228,6 +243,26 @@ class TiendaController {
                 }
                 if (empty($cliente['nombre']) || empty($cliente['rut'])) {
                     Response::error('Nombre y RUT del cliente son obligatorios.');
+                }
+
+                // Validaciones REGEX del cliente anónimo
+                $resultadoRut = Validaciones::validarRut($cliente['rut']);
+                if (!$resultadoRut['valido']) {
+                    Response::error($resultadoRut['mensaje']);
+                }
+
+                if (!empty($cliente['email'])) {
+                    $resultadoEmail = Validaciones::validarEmail($cliente['email']);
+                    if (!$resultadoEmail['valido']) {
+                        Response::error($resultadoEmail['mensaje']);
+                    }
+                }
+
+                if (!empty($cliente['telefono'])) {
+                    $resultadoTel = Validaciones::validarTelefono($cliente['telefono']);
+                    if (!$resultadoTel['valido']) {
+                        Response::error($resultadoTel['mensaje']);
+                    }
                 }
 
                 // Buscar si el cliente ya existe por RUT

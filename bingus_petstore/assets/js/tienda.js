@@ -41,6 +41,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await cargarCatalogo();
     renderBadgeCarrito();
 
+    // Inicializar selects de región/comuna del checkout
+    poblarSelectRegion('chkRegion', 'chkComuna');
+
+    // Configurar auto-formato y validación inline
+    configurarAutoFormatoRut('chkRut');
+    configurarValidacionEmail('chkEmail');
+    configurarAutoFormatoTelefono('chkTelefono');
+
     // Event listener para búsqueda
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
@@ -423,7 +431,8 @@ function abrirCheckout() {
         document.getElementById('chkRut').value = clienteSesion.rut || '';
         document.getElementById('chkEmail').value = clienteSesion.email || '';
         document.getElementById('chkTelefono').value = clienteSesion.telefono || '';
-        document.getElementById('chkDireccion').value = clienteSesion.direccion || '';
+        // No pre-fill dirección — el cliente selecciona fresco cada vez
+        document.getElementById('chkCalle').value = '';
     }
 
     // Render resumen con IVA
@@ -461,6 +470,65 @@ async function confirmarPedido() {
     const carrito = getCarrito();
     if (carrito.length === 0) return;
 
+    // ========== VALIDACIÓN FRONTEND ==========
+    const camposError = ['chkRut', 'chkEmail', 'chkTelefono', 'chkRegion', 'chkComuna', 'chkCalle'];
+    limpiarErrores(camposError);
+    let hayErrores = false;
+
+    // Validar nombre
+    const nombre = document.getElementById('chkNombre').value.trim();
+    if (!nombre) {
+        mostrarToast('El nombre es obligatorio', 'error');
+        hayErrores = true;
+    }
+
+    // Validar RUT
+    const rut = document.getElementById('chkRut').value.trim();
+    const resRut = validarRut(rut);
+    if (!resRut.valido) {
+        mostrarErrorCampo('chkRut', resRut.mensaje);
+        hayErrores = true;
+    }
+
+    // Validar Email (opcional pero si se ingresa, debe ser válido)
+    const email = document.getElementById('chkEmail').value.trim();
+    const resEmail = validarEmail(email);
+    if (!resEmail.valido) {
+        mostrarErrorCampo('chkEmail', resEmail.mensaje);
+        hayErrores = true;
+    }
+
+    // Validar Teléfono (opcional pero si se ingresa, debe ser válido)
+    const telefono = document.getElementById('chkTelefono').value.trim();
+    const resTel = validarTelefono(telefono);
+    if (!resTel.valido) {
+        mostrarErrorCampo('chkTelefono', resTel.mensaje);
+        hayErrores = true;
+    }
+
+    // Validar dirección (región, comuna, calle)
+    const region = document.getElementById('chkRegion').value;
+    const comuna = document.getElementById('chkComuna').value;
+    const calle = document.getElementById('chkCalle').value.trim();
+
+    if (!region) {
+        mostrarErrorCampo('chkRegion', 'Debes seleccionar una región.');
+        hayErrores = true;
+    }
+    if (!comuna) {
+        mostrarErrorCampo('chkComuna', 'Debes seleccionar una comuna.');
+        hayErrores = true;
+    }
+    if (!calle) {
+        mostrarErrorCampo('chkCalle', 'Debes ingresar una calle y número.');
+        hayErrores = true;
+    }
+
+    if (hayErrores) return;
+
+    // Construir dirección compuesta
+    const direccionCompleta = construirDireccion('chkRegion', 'chkComuna', 'chkCalle');
+
     const btnConfirmar = document.getElementById('btnConfirmarPedido');
     btnConfirmar.disabled = true;
     btnConfirmar.textContent = 'Procesando...';
@@ -473,25 +541,18 @@ async function confirmarPedido() {
             precio: i.precio,        // precio con IVA
             subtotal: i.subtotal     // subtotal con IVA
         })),
-        direccion_entrega: document.getElementById('chkDireccion').value.trim() || null
+        direccion_entrega: direccionCompleta
     };
 
     // If not logged in, include client data from form
     if (!clienteSesion) {
-        const nombre = document.getElementById('chkNombre').value.trim();
-        const rut = document.getElementById('chkRut').value.trim();
-        const email = document.getElementById('chkEmail').value.trim();
-        const telefono = document.getElementById('chkTelefono').value.trim();
-        const direccion = document.getElementById('chkDireccion').value.trim();
-
-        if (!nombre || !rut) {
-            mostrarToast('Nombre y RUT son obligatorios', 'error');
-            btnConfirmar.disabled = false;
-            btnConfirmar.textContent = '✅ Confirmar Pedido';
-            return;
-        }
-
-        body.cliente = { nombre, rut, email, telefono, direccion };
+        body.cliente = {
+            nombre: nombre,
+            rut: limpiarRut(rut),
+            email: email || null,
+            telefono: telefono || null,
+            direccion: direccionCompleta
+        };
     }
 
     const res = await Api.post('/tienda/checkout', body);
@@ -504,6 +565,8 @@ async function confirmarPedido() {
 
         // Limpiar formulario
         document.getElementById('checkoutForm').reset();
+        // Resetear selects de comuna
+        poblarSelectComuna('chkComuna', '');
 
         // Recargar catálogo (stock pudo haber cambiado)
         await cargarCatalogo();

@@ -14,8 +14,8 @@ $cliente_nombre = $_SESSION['cliente_nombre'] ?? '';
     <title><?php echo $page_title; ?></title>
     <meta name="description" content="<?php echo $page_description; ?>">
     <link rel="icon" href="/bingus_petstore/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="/bingus_petstore/assets/css/styles.css">
-    <link rel="stylesheet" href="/bingus_petstore/assets/css/tienda.css">
+    <link rel="stylesheet" href="/bingus_petstore/assets/css/styles.css?v=3.2">
+    <link rel="stylesheet" href="/bingus_petstore/assets/css/tienda.css?v=3.2">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="<?php echo $body_class; ?>">
@@ -108,19 +108,37 @@ $cliente_nombre = $_SESSION['cliente_nombre'] ?? '';
                         </div>
                         <div class="checkout-form-group">
                             <label for="chkRut">RUT *</label>
-                            <input type="text" id="chkRut" required placeholder="Ej: 12345678-9">
+                            <input type="text" id="chkRut" required placeholder="Ej: 12.345.678-9" maxlength="12">
+                            <span class="field-error" id="chkRutError"></span>
                         </div>
                         <div class="checkout-form-group">
                             <label for="chkEmail">Email</label>
                             <input type="email" id="chkEmail" placeholder="tu@email.com">
+                            <span class="field-error" id="chkEmailError"></span>
                         </div>
                         <div class="checkout-form-group">
                             <label for="chkTelefono">Teléfono</label>
-                            <input type="text" id="chkTelefono" placeholder="+56 9 XXXX XXXX">
+                            <input type="text" id="chkTelefono" placeholder="+56 9 XXXX XXXX" maxlength="17">
+                            <span class="field-error" id="chkTelefonoError"></span>
+                        </div>
+                        <div class="checkout-form-group">
+                            <label for="chkRegion">Región de Entrega *</label>
+                            <select id="chkRegion" required>
+                                <option value="">-- Selecciona una región --</option>
+                            </select>
+                            <span class="field-error" id="chkRegionError"></span>
+                        </div>
+                        <div class="checkout-form-group">
+                            <label for="chkComuna">Comuna *</label>
+                            <select id="chkComuna" required>
+                                <option value="">-- Primero selecciona región --</option>
+                            </select>
+                            <span class="field-error" id="chkComunaError"></span>
                         </div>
                         <div class="checkout-form-group full">
-                            <label for="chkDireccion">Dirección de Entrega</label>
-                            <input type="text" id="chkDireccion" placeholder="Calle, número, comuna">
+                            <label for="chkCalle">Calle y Número *</label>
+                            <input type="text" id="chkCalle" required placeholder="Ej: Av. Los Perros 123">
+                            <span class="field-error" id="chkCalleError"></span>
                         </div>
                     </div>
                 </div>
@@ -148,8 +166,10 @@ $cliente_nombre = $_SESSION['cliente_nombre'] ?? '';
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- ====== SCRIPTS ====== -->
-    <script src="/bingus_petstore/assets/js/api.js"></script>
-    <script src="/bingus_petstore/assets/js/tienda.js"></script>
+    <script src="/bingus_petstore/assets/js/api.js?v=3.2"></script>
+    <script src="/bingus_petstore/assets/js/comunas-chile.js?v=3.2"></script>
+    <script src="/bingus_petstore/assets/js/validaciones.js?v=3.2"></script>
+    <script src="/bingus_petstore/assets/js/tienda.js?v=3.2"></script>
 
 </body>
 </html>

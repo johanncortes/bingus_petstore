@@ -18,8 +18,8 @@ if (isset($_SESSION['cliente_id'])) {
     <title><?php echo $page_title; ?></title>
     <meta name="description" content="<?php echo $page_description; ?>">
     <link rel="icon" href="/bingus_petstore/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="/bingus_petstore/assets/css/styles.css">
-    <link rel="stylesheet" href="/bingus_petstore/assets/css/tienda.css">
+    <link rel="stylesheet" href="/bingus_petstore/assets/css/styles.css?v=3.2">
+    <link rel="stylesheet" href="/bingus_petstore/assets/css/tienda.css?v=3.2">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="<?php echo $body_class; ?>">
@@ -78,12 +78,14 @@ if (isset($_SESSION['cliente_id'])) {
                         </div>
                         <div class="form-group">
                             <label for="regRut">RUT *</label>
-                            <input type="text" id="regRut" class="form-control" placeholder="Ej: 12345678-9" required>
+                            <input type="text" id="regRut" class="form-control" placeholder="Ej: 12.345.678-9" required maxlength="12">
+                            <span class="field-error" id="regRutError"></span>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="regEmail">Email *</label>
                         <input type="email" id="regEmail" class="form-control" placeholder="tu@email.com" required>
+                        <span class="field-error" id="regEmailError"></span>
                     </div>
                     <div class="form-group">
                         <label for="regPassword">Contraseña *</label>
@@ -92,11 +94,27 @@ if (isset($_SESSION['cliente_id'])) {
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="regTelefono">Teléfono</label>
-                            <input type="text" id="regTelefono" class="form-control" placeholder="+56 9 XXXX XXXX">
+                            <input type="text" id="regTelefono" class="form-control" placeholder="+56 9 XXXX XXXX" maxlength="17">
+                            <span class="field-error" id="regTelefonoError"></span>
                         </div>
                         <div class="form-group">
-                            <label for="regDireccion">Dirección</label>
-                            <input type="text" id="regDireccion" class="form-control" placeholder="Calle, número, comuna">
+                            <label for="regRegion">Región de Entrega *</label>
+                            <select id="regRegion" class="form-control" required>
+                                <option value="">-- Selecciona una región --</option>
+                            </select>
+                            <span class="field-error" id="regRegionError"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="regComuna">Comuna *</label>
+                            <select id="regComuna" class="form-control" required>
+                                <option value="">-- Primero selecciona región --</option>
+                            </select>
+                            <span class="field-error" id="regComunaError"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="regCalle">Calle y Número *</label>
+                            <input type="text" id="regCalle" class="form-control" placeholder="Ej: Av. Los Perros 123" required>
+                            <span class="field-error" id="regCalleError"></span>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-block btn-lg" id="btnRegistroCliente" style="margin-top:10px;">
@@ -112,8 +130,10 @@ if (isset($_SESSION['cliente_id'])) {
     </div>
 
     <!-- ====== SCRIPTS ====== -->
-    <script src="/bingus_petstore/assets/js/api.js"></script>
-    <script src="/bingus_petstore/assets/js/tienda-auth.js"></script>
+    <script src="/bingus_petstore/assets/js/api.js?v=3.2"></script>
+    <script src="/bingus_petstore/assets/js/comunas-chile.js?v=3.2"></script>
+    <script src="/bingus_petstore/assets/js/validaciones.js?v=3.2"></script>
+    <script src="/bingus_petstore/assets/js/tienda-auth.js?v=3.2"></script>
 
 </body>
 </html>
